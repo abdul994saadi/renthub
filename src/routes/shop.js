@@ -7,6 +7,7 @@ const { db } = require('../db');
 const { hashPassword, verifyPassword, logIn, logOut, requireShop } = require('../auth');
 const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO } = require('../helpers');
 const { sendCancellationEmail } = require('../email');
+const payments = require('../payments');
 
 const router = express.Router();
 
@@ -89,7 +90,7 @@ router.get('/', (req, res) => {
          (SELECT COUNT(*) FROM cars WHERE shop_id = ?) AS cars,
          (SELECT COUNT(*) FROM cars WHERE shop_id = ? AND is_active = 1) AS active_cars,
          (SELECT COUNT(*) FROM bookings WHERE shop_id = ? AND status = 'confirmed' AND return_date >= ?) AS upcoming,
-         (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE shop_id = ? AND status <> 'cancelled') AS revenue`,
+         (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE shop_id = ? AND payment_status = 'paid') AS revenue`,
     )
     .get(shopId, shopId, shopId, today, shopId);
   const upcoming = db
@@ -246,7 +247,8 @@ router.get('/bookings', (req, res) => {
   const bookings = db
     .prepare(
       `SELECT bookings.*, cars.make, cars.model, cars.year FROM bookings JOIN cars ON cars.id = bookings.car_id
-       WHERE bookings.shop_id = ? ${status ? 'AND bookings.status = ?' : ''}
+       WHERE bookings.shop_id = ? AND bookings.status IN ('confirmed', 'completed', 'cancelled')
+         ${status ? 'AND bookings.status = ?' : ''}
        ORDER BY bookings.pickup_date DESC`,
     )
     .all(...[req.shop.id, status].filter(Boolean));
@@ -256,17 +258,62 @@ router.get('/bookings', (req, res) => {
 router.post('/bookings/:id/status', async (req, res) => {
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND shop_id = ?').get(Number(req.params.id), req.shop.id);
   const status = req.body.status;
-  if (booking && booking.status === 'confirmed' && ['completed', 'cancelled'].includes(status)) {
-    db.prepare('UPDATE bookings SET status = ? WHERE id = ?').run(status, booking.id);
-    if (status === 'cancelled') {
-      const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
-      await sendCancellationEmail(booking, car, req.shop);
-      res.flash('success', `Booking ${booking.reference} cancelled. The customer has been emailed.`);
-    } else {
-      res.flash('success', `Booking ${booking.reference} marked as completed.`);
-    }
+  const back = req.get('referer')?.includes('/shop') ? req.get('referer') : '/shop/bookings';
+  if (!booking || booking.status !== 'confirmed' || !['completed', 'cancelled'].includes(status)) return res.redirect(303, back);
+
+  if (status === 'completed') {
+    db.prepare(`UPDATE bookings SET status = 'completed' WHERE id = ?`).run(booking.id);
+    res.flash('success', `Booking ${booking.reference} marked as completed.`);
+    return res.redirect(303, back);
   }
-  res.redirect(303, req.get('referer')?.includes('/shop') ? req.get('referer') : '/shop/bookings');
+
+  try {
+    await payments.refundBooking(booking);
+  } catch (err) {
+    console.error(`Refund for ${booking.reference} failed:`, err.message);
+    res.flash('error', `The refund could not be processed (${err.message}). The booking was not cancelled.`);
+    return res.redirect(303, back);
+  }
+  db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(booking.id);
+  const updated = db.prepare('SELECT * FROM bookings WHERE id = ?').get(booking.id);
+  const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
+  await sendCancellationEmail(updated, car, req.shop);
+  res.flash('success', `Booking ${booking.reference} cancelled${updated.payment_status === 'refunded' ? ' and fully refunded' : ''}. The customer has been emailed.`);
+  res.redirect(303, back);
+});
+
+// ---------- Payments (Stripe Connect) ----------
+
+router.get('/payments', async (req, res) => {
+  let shop = req.shop;
+  try {
+    shop = await payments.refreshConnectStatus(shop);
+  } catch (err) {
+    console.error('Could not refresh Stripe account:', err.message);
+  }
+  res.render('shop/payments', { shop, demoMode: payments.demoMode, feePercent: payments.PLATFORM_FEE_PERCENT });
+});
+
+// GET as well as POST: Stripe sends shops back here if their onboarding link expires.
+router.all('/payments/connect', async (req, res) => {
+  if (payments.demoMode) {
+    res.flash('error', 'Stripe is not set up on this site yet.');
+    return res.redirect(303, '/shop/payments');
+  }
+  res.redirect(303, await payments.connectOnboardingUrl(req, req.shop));
+});
+
+router.get('/payments/return', async (req, res) => {
+  const shop = await payments.refreshConnectStatus(req.shop);
+  res.flash(shop.stripe_charges_enabled ? 'success' : 'info', shop.stripe_charges_enabled
+    ? 'Your Stripe account is connected. New bookings will be paid out to you.'
+    : 'Stripe still needs some details before you can receive payouts. Click "Continue setup" to finish.');
+  res.redirect(303, '/shop/payments');
+});
+
+router.post('/payments/dashboard', async (req, res) => {
+  if (!req.shop.stripe_account_id || payments.demoMode) return res.redirect(303, '/shop/payments');
+  res.redirect(303, await payments.connectDashboardUrl(req.shop));
 });
 
 // ---------- Profile ----------

@@ -7,6 +7,7 @@ const { db } = require('./src/db');
 const { loadShop } = require('./src/auth');
 const helpers = require('./src/helpers');
 const { smtpConfigured } = require('./src/email');
+const payments = require('./src/payments');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -26,6 +27,19 @@ app.disable('x-powered-by');
 
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: isProduction ? '1d' : 0 }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d' }));
+
+// Stripe needs the exact raw body to verify the webhook signature, so this comes before the body parser.
+app.post('/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
+  if (payments.demoMode) return res.status(404).end();
+  try {
+    await payments.handleWebhook(req.body, req.get('stripe-signature'));
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Stripe webhook error:', err.message);
+    res.status(err.type === 'StripeSignatureVerificationError' ? 400 : 500).send(err.message);
+  }
+});
+
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 app.use(cookieParser(sessionSecret));
 
@@ -50,7 +64,7 @@ app.use((req, res, next) => {
 
 app.use(loadShop);
 app.use((req, res, next) => {
-  Object.assign(res.locals, helpers, { path: req.path, showOutbox: !isProduction });
+  Object.assign(res.locals, helpers, { path: req.path, showOutbox: !isProduction, demoPayments: payments.demoMode });
   next();
 });
 
@@ -71,6 +85,24 @@ if (!isProduction) {
   });
 }
 
+// Simulated payment page, used only when no Stripe key is configured (never in production).
+if (payments.demoMode) {
+  const findPending = (ref) => db.prepare('SELECT * FROM bookings WHERE reference = ?').get(ref);
+  app.get('/dev/pay/:reference', (req, res) => {
+    const booking = findPending(req.params.reference);
+    if (!booking) return res.status(404).render('error', { title: 'Not found', message: 'No such booking.' });
+    if (booking.status !== 'pending_payment') return res.redirect(`/bookings/${booking.reference}`);
+    const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
+    res.render('demo-pay', { booking, car });
+  });
+  app.post('/dev/pay/:reference', async (req, res) => {
+    const booking = findPending(req.params.reference);
+    if (!booking) return res.status(404).end();
+    await payments.handlePaid(booking.id, `demo_${booking.reference}`);
+    res.redirect(303, `/bookings/${booking.reference}`);
+  });
+}
+
 app.use((req, res) => res.status(404).render('error', { title: 'Page not found', message: 'We could not find that page.' }));
 
 app.use((err, req, res, next) => {
@@ -85,4 +117,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
   console.log(smtpConfigured ? 'Emails are sent through SMTP.' : 'SMTP not configured: emails are saved to /dev/outbox.');
+  console.log(payments.demoMode ? 'Stripe not configured: payments are simulated on /dev/pay.' : 'Payments are processed by Stripe.');
 });

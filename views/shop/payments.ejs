@@ -1,0 +1,20 @@
+<%- include('../partials/head', { title: 'Payments' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <div class="card pad form narrow-form">
+    <h2>Getting paid</h2>
+    <p class="muted">Customers pay online by card or Apple Pay when they book. Cancelling a booking refunds the customer automatically.</p>
+    <% if (demoMode) { %>
+      <div class="alert alert-info">Stripe is not connected to this site yet (test mode), so payments are simulated.</div>
+    <% } else if (shop.stripe_charges_enabled) { %>
+      <div class="alert alert-success">✓ Your Stripe account is connected. Payments for your bookings are paid out to your bank account by Stripe.</div>
+      <% if (feePercent) { %><p class="small">RentHub keeps a <%= feePercent %>% service fee on each booking.</p><% } %>
+      <form method="post" action="/shop/payments/dashboard"><button class="btn btn-outline" type="submit">Open Stripe dashboard (payouts &amp; bank details)</button></form>
+    <% } else { %>
+      <p>Connect a free Stripe account so booking payments go straight to your bank account<%= feePercent ? ` (minus a ${feePercent}% RentHub service fee)` : '' %>. It takes about 5 minutes. You'll need your business and bank details.</p>
+      <p class="small muted">Until you connect, payments for your bookings are collected by RentHub and paid to you separately.</p>
+      <form method="post" action="/shop/payments/connect"><button class="btn btn-big" type="submit"><%= shop.stripe_account_id ? 'Continue setup' : 'Connect with Stripe' %></button></form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

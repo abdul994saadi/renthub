@@ -58,8 +58,9 @@ function bookingTable(booking, car, shop) {
     ${row('Return', formatDate(booking.return_date))}
     ${row('Rental days', booking.days)}
     ${row('Daily rate', money(booking.daily_price))}
-    ${row('Total', money(booking.total_price))}
-    ${car.deposit ? row('Refundable deposit (paid at pick-up)', money(car.deposit)) : ''}
+    ${row(booking.payment_status === 'unpaid' ? 'Total' : 'Total paid online', money(booking.total_price))}
+    ${booking.payment_status === 'refunded' ? row('Refunded', money(booking.total_price)) : ''}
+    ${car.deposit ? row('Refundable deposit (at pick-up)', money(car.deposit)) : ''}
   </table>
   <h2 style="font-size:16px;margin:20px 0 8px">Rental shop</h2>
   <p style="margin:0;font-size:14px;line-height:1.6">
@@ -77,7 +78,7 @@ async function sendBookingEmails(booking, car, shop) {
     subject: `Booking confirmed: ${car.make} ${car.model} (${booking.reference})`,
     html: layout(
       `Your booking is confirmed, ${booking.customer_name}!`,
-      `<p style="font-size:14px">Thank you for booking with <strong>${esc(shop.name)}</strong>. Bring your driving licence and this reference when you pick up the car.</p>
+      `<p style="font-size:14px">Thank you for booking with <strong>${esc(shop.name)}</strong>. Your payment of <strong>${money(booking.total_price)}</strong> was received. Bring your driving licence and this reference when you pick up the car.</p>
        ${bookingTable(booking, car, shop)}`,
     ),
   });
@@ -85,8 +86,8 @@ async function sendBookingEmails(booking, car, shop) {
     to: shop.email,
     subject: `New booking ${booking.reference}: ${car.make} ${car.model}`,
     html: layout(
-      'You have a new booking',
-      `<p style="font-size:14px">Customer: <strong>${esc(booking.customer_name)}</strong><br>
+      'You have a new paid booking',
+      `<p style="font-size:14px">The customer has paid ${money(booking.total_price)} online.<br>Customer: <strong>${esc(booking.customer_name)}</strong><br>
        Email: ${esc(booking.customer_email)}<br>Phone: ${esc(booking.customer_phone)}
        ${booking.notes ? `<br>Notes: ${esc(booking.notes)}` : ''}</p>
        ${bookingTable(booking, car, shop)}`,
@@ -100,10 +101,25 @@ async function sendCancellationEmail(booking, car, shop) {
     subject: `Booking cancelled: ${booking.reference}`,
     html: layout(
       'Your booking has been cancelled',
-      `<p style="font-size:14px">${esc(shop.name)} has cancelled the booking below. Contact the shop if you have any questions.</p>
+      `<p style="font-size:14px">${esc(shop.name)} has cancelled the booking below.
+       ${booking.payment_status === 'refunded' ? `A full refund of <strong>${money(booking.total_price)}</strong> has been sent to your card. It usually appears within 5–10 business days.` : ''}
+       Contact the shop if you have any questions.</p>
        ${bookingTable(booking, car, shop)}`,
     ),
   });
 }
 
-module.exports = { sendBookingEmails, sendCancellationEmail, smtpConfigured };
+async function sendConflictRefundEmail(booking, car, shop) {
+  await sendEmail({
+    to: booking.customer_email,
+    subject: `Payment refunded: ${car.make} ${car.model} is no longer available`,
+    html: layout(
+      'Sorry, this car was booked by someone else',
+      `<p style="font-size:14px">Your payment came through after the 30-minute hold on this car ran out, and another customer booked it in the meantime.
+       We have refunded the full <strong>${money(booking.total_price)}</strong> to your card. It usually appears within 5–10 business days.</p>
+       ${bookingTable(booking, car, shop)}`,
+    ),
+  });
+}
+
+module.exports = { sendBookingEmails, sendCancellationEmail, sendConflictRefundEmail, smtpConfigured };

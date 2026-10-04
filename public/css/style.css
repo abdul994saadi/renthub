@@ -128,6 +128,7 @@ input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; accent-color:
 input[type="file"] { padding: 8px; }
 label.check { display: flex; align-items: center; gap: 10px; font-weight: 400; }
 .form { display: grid; gap: 16px; }
+.form > h1, .form > h2, .form > p, .form > form { margin: 0; }
 .narrow-form { max-width: 640px; }
 .row-2, .row-3 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 .row-3 { grid-template-columns: repeat(3, 1fr); }
@@ -197,6 +198,7 @@ legend { font-weight: 600; padding: 0 6px; }
 .confirm { text-align: center; }
 .confirm .summary, .confirm h2, .confirm p:not(.muted) { text-align: left; }
 .confirm-icon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; font-size: 2rem; background: var(--green-soft); color: var(--green); }
+.confirm-icon.pending { background: var(--primary-soft); color: var(--primary); }
 .confirm-icon.cancelled { background: var(--red-soft); color: var(--red); }
 .ref { background: var(--primary-soft); border-radius: 10px; padding: 12px; margin: 16px 0; font-size: 1.1rem; letter-spacing: 0.04em; }
 

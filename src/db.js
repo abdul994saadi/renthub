@@ -77,6 +77,24 @@ CREATE TABLE IF NOT EXISTS emails (
 );
 `);
 
+// Columns added after the first release; ALTER TABLE keeps existing databases working.
+function addColumn(table, column, definition) {
+  const exists = db.prepare(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = ?`).get(column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+// Booking status: pending_payment -> confirmed -> completed, or cancelled / expired.
+// A pending_payment booking holds the car until hold_expires_at.
+addColumn('bookings', 'payment_status', "TEXT NOT NULL DEFAULT 'unpaid'"); // unpaid | paid | refunded
+addColumn('bookings', 'hold_expires_at', 'TEXT');
+addColumn('bookings', 'stripe_session_id', 'TEXT');
+addColumn('bookings', 'stripe_payment_intent', 'TEXT');
+addColumn('bookings', 'stripe_destination', 'TEXT');
+addColumn('bookings', 'paid_at', 'TEXT');
+addColumn('shops', 'stripe_account_id', 'TEXT');
+addColumn('shops', 'stripe_charges_enabled', 'INTEGER NOT NULL DEFAULT 0');
+db.exec('CREATE INDEX IF NOT EXISTS idx_bookings_session ON bookings(stripe_session_id)');
+
 function transaction(fn) {
   db.exec('BEGIN IMMEDIATE');
   try {

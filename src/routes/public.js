@@ -1,8 +1,8 @@
 const express = require('express');
 const { db } = require('../db');
 const { CATEGORIES, TRANSMISSIONS, validateDates, todayISO, isISODate } = require('../helpers');
-const { isCarAvailable, upcomingBookedRanges, quote, createBooking } = require('../bookings');
-const { sendBookingEmails } = require('../email');
+const { isCarAvailable, upcomingBookedRanges, quote, createPendingBooking } = require('../bookings');
+const { startCheckout, syncFromSession, abandonCheckout } = require('../payments');
 
 const router = express.Router();
 
@@ -118,7 +118,7 @@ router.post('/cars/:id/book', (req, res) => {
   res.render('review', { car, shop, d, q: quote(car, d.pickup, d.ret) });
 });
 
-// Step 2: the customer confirmed the summary, so create the booking and send emails.
+// Step 2: the customer confirmed the summary. Hold the car and send them to pay.
 router.post('/cars/:id/confirm', async (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
@@ -126,17 +126,41 @@ router.post('/cars/:id/confirm', async (req, res) => {
   const error = validateBooking(d, car);
   if (error) return renderCarWithError(res, car, d, error);
 
-  const booking = createBooking(car, d);
+  const booking = createPendingBooking(car, d);
   if (!booking) return renderCarWithError(res, car, d, 'Sorry, someone just booked this car for those dates.');
 
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  await sendBookingEmails(booking, car, shop);
-  res.redirect(303, `/bookings/${booking.reference}`);
+  try {
+    res.redirect(303, await startCheckout(req, booking, car, shop));
+  } catch (err) {
+    console.error('Could not start checkout:', err.message);
+    db.prepare(`UPDATE bookings SET status = 'expired', hold_expires_at = NULL WHERE id = ?`).run(booking.id);
+    renderCarWithError(res, car, d, 'We could not start the payment. Please try again in a moment.');
+  }
 });
 
-router.get('/bookings/:reference', (req, res) => {
-  const booking = db.prepare('SELECT * FROM bookings WHERE reference = ?').get(req.params.reference);
-  if (!booking) return res.status(404).render('error', { title: 'Booking not found', message: 'Check the reference in your confirmation email.' });
+function findBooking(reference) {
+  return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);
+}
+
+const bookingNotFound = (res) =>
+  res.status(404).render('error', { title: 'Booking not found', message: 'Check the reference in your confirmation email.' });
+
+// The customer pressed "back" on the payment page.
+router.get('/bookings/:reference/abandon', async (req, res) => {
+  const booking = findBooking(req.params.reference);
+  if (!booking) return bookingNotFound(res);
+  await abandonCheckout(booking);
+  const after = findBooking(booking.reference);
+  if (after.payment_status !== 'unpaid') return res.redirect(303, `/bookings/${after.reference}`);
+  res.flash('info', 'Payment cancelled. The car was not booked and you were not charged.');
+  res.redirect(303, `/cars/${booking.car_id}?pickup=${booking.pickup_date}&return=${booking.return_date}`);
+});
+
+router.get('/bookings/:reference', async (req, res) => {
+  let booking = findBooking(req.params.reference);
+  if (!booking) return bookingNotFound(res);
+  if (req.query.session_id) booking = await syncFromSession(booking, String(req.query.session_id));
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
   res.render('confirmation', { booking, car, shop });

@@ -1,14 +1,25 @@
 <%- include('partials/head', { title: 'Booking ' + booking.reference }) %>
+<% const s = booking.status, paid = booking.payment_status; %>
 <div class="wrap narrow section">
   <div class="card pad confirm">
-    <% if (booking.status === 'cancelled') { %>
+    <% if (s === 'pending_payment') { %>
+      <meta http-equiv="refresh" content="4">
+      <div class="confirm-icon pending">…</div>
+      <h1>Waiting for payment confirmation</h1>
+      <p class="muted">This page refreshes automatically. If you closed the payment page, <a href="/bookings/<%= booking.reference %>/abandon">start again</a>.</p>
+    <% } else if (s === 'expired') { %>
+      <div class="confirm-icon cancelled">✕</div>
+      <h1>Booking not completed</h1>
+      <p class="muted">The payment was not finished, so the car was released and you were not charged.</p>
+      <a class="btn" href="/cars/<%= car.id %>">Try again</a>
+    <% } else if (s === 'cancelled') { %>
       <div class="confirm-icon cancelled">✕</div>
       <h1>Booking cancelled</h1>
-      <p class="muted">This booking was cancelled by the rental shop.</p>
+      <p class="muted"><%= paid === 'refunded' ? `Your payment of ${money(booking.total_price)} has been refunded to your card. It usually appears within 5–10 business days.` : 'This booking was cancelled.' %></p>
     <% } else { %>
       <div class="confirm-icon">✓</div>
-      <h1>Booking <%= booking.status === 'completed' ? 'completed' : 'confirmed' %>!</h1>
-      <p class="muted">We sent the details to <strong><%= booking.customer_email %></strong>.</p>
+      <h1>Booking <%= s === 'completed' ? 'completed' : 'confirmed' %>!</h1>
+      <p class="muted">Payment received. We sent the details to <strong><%= booking.customer_email %></strong>.</p>
     <% } %>
     <div class="ref">Reference <strong><%= booking.reference %></strong></div>
     <table class="summary">
@@ -16,15 +27,15 @@
       <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %></td></tr>
       <tr><td>Return</td><td><%= formatDate(booking.return_date) %></td></tr>
       <tr><td>Days</td><td><%= booking.days %></td></tr>
-      <tr class="total"><td>Total (pay at pick-up)</td><td><%= money(booking.total_price) %></td></tr>
-      <% if (car.deposit) { %><tr><td>Refundable deposit</td><td><%= money(car.deposit) %></td></tr><% } %>
+      <tr class="total"><td><%= paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total' %></td><td><%= money(booking.total_price) %></td></tr>
+      <% if (car.deposit) { %><tr><td>Refundable deposit <span class="muted small">at pick-up</span></td><td><%= money(car.deposit) %></td></tr><% } %>
     </table>
     <h2 class="h3">Pick up from</h2>
     <p><strong><%= shop.name %></strong><br><%= [shop.address, shop.city].filter(Boolean).join(', ') %>
       <% if (shop.phone) { %><br><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a><% } %>
       <% if (shop.opening_hours) { %><br><span class="muted"><%= shop.opening_hours %></span><% } %></p>
-    <p class="muted small">Bring your driving licence and this reference. Save this page to view your booking later.</p>
-    <a class="btn" href="/cars">Browse more cars</a>
+    <% if (s === 'confirmed') { %><p class="muted small">Bring your driving licence and this reference. Save this page to view your booking later.</p><% } %>
+    <a class="btn btn-ghost" href="/cars">Browse more cars</a>
   </div>
 </div>
 <%- include('partials/foot') %>

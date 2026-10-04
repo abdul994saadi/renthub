@@ -24,14 +24,14 @@
       <dt>Phone</dt><dd><%= d.phone %></dd>
       <% if (d.notes) { %><dt>Notes</dt><dd><%= d.notes %></dd><% } %>
     </dl>
-    <p class="muted small">You pay the shop when you collect the car. A confirmation email will be sent to <strong><%= d.email %></strong>.</p>
+    <p class="muted small">You pay <strong><%= money(q.total) %></strong> now by card or Apple Pay on Stripe's secure payment page. The car is held for you for 30 minutes while you pay. A confirmation email will be sent to <strong><%= d.email %></strong>.<% if (car.deposit) { %> The refundable deposit is handled by the shop at pick-up.<% } %></p>
 
     <form method="post" action="/cars/<%= car.id %>/confirm" class="actions">
       <% for (const [k, v] of Object.entries({ pickup: d.pickup, return: d.ret, name: d.name, email: d.email, phone: d.phone, notes: d.notes, licence: 'yes' })) { %>
         <input type="hidden" name="<%= k %>" value="<%= v %>">
       <% } %>
       <a class="btn btn-ghost" href="/cars/<%= car.id %>?pickup=<%= d.pickup %>&return=<%= d.ret %>">Change</a>
-      <button class="btn btn-big" type="submit">Confirm booking</button>
+      <button class="btn btn-big" type="submit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Pay <%= money(q.total) %></button>
     </form>
   </div>
 </div>
