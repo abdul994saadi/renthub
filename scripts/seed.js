@@ -10,8 +10,8 @@ if (db.prepare('SELECT COUNT(*) AS n FROM shops').get().n > 0) {
 
 const shops = [
   {
-    name: 'City Drive Rentals', email: 'citydrive@example.com', phone: '+971 4 555 0101', city: 'Dubai',
-    address: '12 Sheikh Zayed Road', opening_hours: 'Daily 8:00–22:00',
+    name: 'City Drive Rentals', email: 'citydrive@example.com', phone: '+961 1 555 101', city: 'Beirut',
+    address: '12 Hamra Street', opening_hours: 'Daily 8:00–22:00',
     description: 'Family-run rental shop with new, well-kept cars and free delivery within the city.',
     cars: [
       ['Toyota', 'Corolla', 2024, 'Sedan', 'Automatic', 'Petrol', 5, 4, 45, 200, 'Air conditioning, Bluetooth, Apple CarPlay, Reversing camera'],
@@ -21,9 +21,9 @@ const shops = [
     ],
   },
   {
-    name: 'Desert Wheels', email: 'desertwheels@example.com', phone: '+971 2 555 0202', city: 'Abu Dhabi',
-    address: '45 Corniche Street', opening_hours: 'Sat–Thu 9:00–21:00',
-    description: '4x4 and SUV specialists. Ask us about desert-ready vehicles.',
+    name: 'Desert Wheels', email: 'desertwheels@example.com', phone: '+961 9 555 202', city: 'Jounieh',
+    address: '45 Fouad Chehab Road', opening_hours: 'Mon–Sat 9:00–21:00',
+    description: '4x4 and SUV specialists. Ask us about mountain-ready 4x4s.',
     cars: [
       ['Toyota', 'Land Cruiser', 2023, 'SUV', 'Automatic', 'Petrol', 7, 4, 180, 1500, 'Air conditioning, GPS, 4x4, Leather seats, Sunroof'],
       ['Mitsubishi', 'Pajero', 2022, 'SUV', 'Automatic', 'Petrol', 7, 4, 85, 500, 'Air conditioning, 4x4, Bluetooth'],
@@ -31,8 +31,8 @@ const shops = [
     ],
   },
   {
-    name: 'Prestige Motors', email: 'prestige@example.com', phone: '+971 6 555 0303', city: 'Sharjah',
-    address: '8 Al Majaz Waterfront', opening_hours: 'Daily 10:00–20:00',
+    name: 'Prestige Motors', email: 'prestige@example.com', phone: '+961 9 555 303', city: 'Byblos',
+    address: '8 Old Souk Road', opening_hours: 'Daily 10:00–20:00',
     description: 'Luxury and sports cars for special occasions.',
     cars: [
       ['Mercedes-Benz', 'E-Class', 2024, 'Luxury', 'Automatic', 'Petrol', 5, 4, 220, 2000, 'Leather seats, GPS, Apple CarPlay, Sunroof, Cruise control'],

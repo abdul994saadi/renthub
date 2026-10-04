@@ -28,15 +28,16 @@ app.disable('x-powered-by');
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: isProduction ? '1d' : 0 }));
 app.use('/uploads', express.static(helpers.UPLOAD_DIR, { maxAge: '7d' }));
 
-// Stripe needs the exact raw body to verify the webhook signature, so this comes before the body parser.
-app.post('/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
+// Server-to-server transaction notifications from APS (set this URL as the
+// "Transaction Feedback" URL in the APS dashboard). Accepts form or JSON bodies.
+app.post('/payments/aps/notify', express.urlencoded({ extended: false }), express.json(), async (req, res) => {
   if (payments.demoMode) return res.status(404).end();
   try {
-    await payments.handleWebhook(req.body, req.get('stripe-signature'));
-    res.json({ received: true });
+    await payments.handleApsResult(req.body);
+    res.send('OK');
   } catch (err) {
-    console.error('Stripe webhook error:', err.message);
-    res.status(err.type === 'StripeSignatureVerificationError' ? 400 : 500).send(err.message);
+    console.error('APS notification error:', err.message);
+    res.status(err.status || 500).send('ERROR');
   }
 });
 
@@ -85,7 +86,7 @@ if (!isProduction) {
   });
 }
 
-// Simulated payment page, used only when no Stripe key is configured (never in production).
+// Simulated payment page, used only when APS is not configured (never in production).
 if (payments.demoMode) {
   const findPending = (ref) => db.prepare('SELECT * FROM bookings WHERE reference = ?').get(ref);
   app.get('/dev/pay/:reference', (req, res) => {
@@ -118,5 +119,5 @@ app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
   console.log(smtpConfigured ? 'Emails are sent through SMTP.'
     : isProduction ? 'WARNING: SMTP not configured, so no emails will be sent.' : 'SMTP not configured: emails are saved to /dev/outbox.');
-  console.log(payments.demoMode ? 'Stripe not configured: payments are simulated on /dev/pay.' : 'Payments are processed by Stripe.');
+  console.log(payments.demoMode ? 'APS not configured: payments are simulated on /dev/pay.' : `Payments are processed by Amazon Payment Services (${payments.CHECKOUT_URL}).`);
 });

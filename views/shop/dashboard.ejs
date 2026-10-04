@@ -6,9 +6,6 @@
     <div class="card stat"><span class="muted small">Upcoming bookings</span><strong><%= stats.upcoming %></strong></div>
     <div class="card stat"><span class="muted small">Paid bookings</span><strong><%= money(stats.revenue) %></strong><span class="muted small">all time, after refunds</span></div>
   </div>
-  <% if (!currentShop.stripe_charges_enabled && !demoPayments) { %>
-    <div class="alert alert-info">Connect a Stripe account to receive card payments directly. <a href="/shop/payments">Set up payouts →</a></div>
-  <% } %>
   <div class="section-head">
     <h2>Upcoming bookings</h2>
     <a href="/shop/cars/new" class="btn btn-small">+ Add car</a>

@@ -282,38 +282,25 @@ router.post('/bookings/:id/status', async (req, res) => {
   res.redirect(303, back);
 });
 
-// ---------- Payments (Stripe Connect) ----------
+// ---------- Payments ----------
 
-router.get('/payments', async (req, res) => {
-  let shop = req.shop;
-  try {
-    shop = await payments.refreshConnectStatus(shop);
-  } catch (err) {
-    console.error('Could not refresh Stripe account:', err.message);
-  }
-  res.render('shop/payments', { shop, demoMode: payments.demoMode, feePercent: payments.PLATFORM_FEE_PERCENT });
-});
-
-// GET as well as POST: Stripe sends shops back here if their onboarding link expires.
-router.all('/payments/connect', async (req, res) => {
-  if (payments.demoMode) {
-    res.flash('error', 'Stripe is not set up on this site yet.');
-    return res.redirect(303, '/shop/payments');
-  }
-  res.redirect(303, await payments.connectOnboardingUrl(req, req.shop));
-});
-
-router.get('/payments/return', async (req, res) => {
-  const shop = await payments.refreshConnectStatus(req.shop);
-  res.flash(shop.stripe_charges_enabled ? 'success' : 'info', shop.stripe_charges_enabled
-    ? 'Your Stripe account is connected. New bookings will be paid out to you.'
-    : 'Stripe still needs some details before you can receive payouts. Click "Continue setup" to finish.');
-  res.redirect(303, '/shop/payments');
-});
-
-router.post('/payments/dashboard', async (req, res) => {
-  if (!req.shop.stripe_account_id || payments.demoMode) return res.redirect(303, '/shop/payments');
-  res.redirect(303, await payments.connectDashboardUrl(req.shop));
+// Customers pay RentHub online; RentHub pays each shop its share.
+router.get('/payments', (req, res) => {
+  const totals = db
+    .prepare(
+      `SELECT COUNT(*) AS count, COALESCE(SUM(total_price), 0) AS gross
+       FROM bookings WHERE shop_id = ? AND payment_status = 'paid'`,
+    )
+    .get(req.shop.id);
+  const fee = Math.round(totals.gross * payments.PLATFORM_FEE_PERCENT) / 100;
+  const recent = db
+    .prepare(
+      `SELECT bookings.*, cars.make, cars.model, cars.year FROM bookings JOIN cars ON cars.id = bookings.car_id
+       WHERE bookings.shop_id = ? AND bookings.payment_status IN ('paid', 'refunded')
+       ORDER BY bookings.paid_at DESC LIMIT 20`,
+    )
+    .all(req.shop.id);
+  res.render('shop/payments', { totals, fee, feePercent: payments.PLATFORM_FEE_PERCENT, recent });
 });
 
 // ---------- Profile ----------

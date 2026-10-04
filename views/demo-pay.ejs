@@ -1,10 +1,10 @@
 <%- include('partials/head', { title: 'Test payment' }) %>
 <div class="wrap narrow section">
-  <div class="alert alert-info"><strong>Test mode.</strong> Stripe is not connected yet, so this page stands in for Stripe's payment page. No real money is taken.</div>
+  <div class="alert alert-info"><strong>Test mode.</strong> Amazon Payment Services is not connected yet, so this page stands in for its payment page. No real money is taken.</div>
   <div class="card pad form">
     <h1>Pay <%= money(booking.total_price) %></h1>
     <p class="muted"><%= car.year %> <%= car.make %> <%= car.model %> · <%= formatDate(booking.pickup_date) %> → <%= formatDate(booking.return_date) %></p>
-    <p class="small">With Stripe connected, the customer sees Apple Pay (on Safari) and card fields here.</p>
+    <p class="small">Once connected, the customer enters their card details (or uses Apple Pay, if enabled on your account) here.</p>
     <form method="post" action="/dev/pay/<%= booking.reference %>"><button class="btn btn-big btn-block" type="submit">Simulate successful payment</button></form>
     <a class="btn btn-ghost btn-block" href="/bookings/<%= booking.reference %>/abandon">Cancel and go back</a>
   </div>

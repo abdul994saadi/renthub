@@ -24,7 +24,7 @@
       <dt>Phone</dt><dd><%= d.phone %></dd>
       <% if (d.notes) { %><dt>Notes</dt><dd><%= d.notes %></dd><% } %>
     </dl>
-    <p class="muted small">You pay <strong><%= money(q.total) %></strong> now by card or Apple Pay on Stripe's secure payment page. The car is held for you for 30 minutes while you pay. A confirmation email will be sent to <strong><%= d.email %></strong>.<% if (car.deposit) { %> The refundable deposit is handled by the shop at pick-up.<% } %></p>
+    <p class="muted small">You pay <strong><%= money(q.total) %></strong> now on Amazon Payment Services' secure payment page. The car is held for you for 30 minutes while you pay. A confirmation email will be sent to <strong><%= d.email %></strong>.<% if (car.deposit) { %> The refundable deposit is handled by the shop at pick-up.<% } %></p>
 
     <form method="post" action="/cars/<%= car.id %>/confirm" class="actions">
       <% for (const [k, v] of Object.entries({ pickup: d.pickup, return: d.ret, name: d.name, email: d.email, phone: d.phone, notes: d.notes, licence: 'yes' })) { %>

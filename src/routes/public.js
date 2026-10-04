@@ -2,7 +2,7 @@ const express = require('express');
 const { db } = require('../db');
 const { CATEGORIES, TRANSMISSIONS, validateDates, todayISO, isISODate } = require('../helpers');
 const { isCarAvailable, upcomingBookedRanges, quote, createPendingBooking } = require('../bookings');
-const { startCheckout, syncFromSession, abandonCheckout } = require('../payments');
+const { startCheckout, syncPendingBooking, abandonCheckout, handleApsResult } = require('../payments');
 
 const router = express.Router();
 
@@ -129,14 +129,30 @@ router.post('/cars/:id/confirm', async (req, res) => {
   const booking = createPendingBooking(car, d);
   if (!booking) return renderCarWithError(res, car, d, 'Sorry, someone just booked this car for those dates.');
 
-  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+  const checkout = startCheckout(req, booking, car);
+  if (checkout.redirect) return res.redirect(303, checkout.redirect);
+  // APS's payment page is opened with a signed form POST from the browser.
+  res.render('payment-redirect', { form: checkout.form, booking });
+});
+
+// The customer's browser comes back from the APS payment page with the signed result.
+router.all('/payments/aps/return', async (req, res) => {
+  const params = req.method === 'POST' ? req.body : req.query;
+  let result;
   try {
-    res.redirect(303, await startCheckout(req, booking, car, shop));
+    result = await handleApsResult(params);
   } catch (err) {
-    console.error('Could not start checkout:', err.message);
-    db.prepare(`UPDATE bookings SET status = 'expired', hold_expires_at = NULL WHERE id = ?`).run(booking.id);
-    renderCarWithError(res, car, d, 'We could not start the payment. Please try again in a moment.');
+    console.error('APS return error:', err.message);
+    return res.status(err.status || 500).render('error', {
+      title: 'Payment could not be verified',
+      message: 'If you were charged, your booking will be confirmed by email shortly. Otherwise please try booking again.',
+    });
   }
+  const { booking, paid, message } = result;
+  if (!booking) return bookingNotFound(res);
+  if (paid) return res.redirect(303, `/bookings/${booking.reference}`);
+  res.flash('error', `Payment was not completed${message ? ` (${message})` : ''}. The car was not booked and you were not charged.`);
+  res.redirect(303, `/cars/${booking.car_id}?pickup=${booking.pickup_date}&return=${booking.return_date}`);
 });
 
 function findBooking(reference) {
@@ -160,7 +176,7 @@ router.get('/bookings/:reference/abandon', async (req, res) => {
 router.get('/bookings/:reference', async (req, res) => {
   let booking = findBooking(req.params.reference);
   if (!booking) return bookingNotFound(res);
-  if (req.query.session_id) booking = await syncFromSession(booking, String(req.query.session_id));
+  if (booking.status === 'pending_payment') booking = await syncPendingBooking(booking);
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
   res.render('confirmation', { booking, car, shop });

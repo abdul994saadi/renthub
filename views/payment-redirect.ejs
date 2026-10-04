@@ -1,0 +1,13 @@
+<%- include('partials/head', { title: 'Redirecting to payment' }) %>
+<div class="wrap narrow section">
+  <form class="card pad form center" method="post" action="<%= form.action %>" id="pay-form">
+    <% for (const [name, value] of Object.entries(form.fields)) { %>
+      <input type="hidden" name="<%= name %>" value="<%= value %>">
+    <% } %>
+    <h1>Taking you to secure payment…</h1>
+    <p class="muted">Booking <strong><%= booking.reference %></strong> · <%= money(booking.total_price) %></p>
+    <button class="btn btn-big" type="submit">Continue to payment</button>
+  </form>
+</div>
+<script>document.getElementById('pay-form').submit();</script>
+<%- include('partials/foot') %>

@@ -9,8 +9,8 @@ A car rental marketplace. Rental shops sign up and list their cars; customers br
 - Date search hides cars that are already booked
 - Car page with specs, features, deposit, mileage policy, and full rental-shop details
 - Booking form with live price estimate → review page → pay online
-- Payment by card, Apple Pay or Google Pay on Stripe Checkout (card details never touch this server)
-- The car is held for 30 minutes while the customer pays; abandoned payments release it
+- Payment by debit/credit card on the Amazon Payment Services hosted page (card details never touch this server)
+- The car is held for 30 minutes while the customer pays; declined or abandoned payments release it
 - Double bookings are blocked, even if two people book at the same moment
 - Confirmation page and confirmation email (sent only once payment succeeds) with reference, dates, amount paid and shop address
 
@@ -19,7 +19,7 @@ A car rental marketplace. Rental shops sign up and list their cars; customers br
 - Dashboard with upcoming bookings and booking value
 - Add, edit, hide or delete cars, with photo upload (works with the iPad/iPhone camera)
 - Booking list: mark completed or cancel (the customer is refunded in full and emailed automatically)
-- Payments tab: connect a Stripe account to receive payouts directly (Stripe Connect Express)
+- Payments tab: money collected for the shop, RentHub's fee, and the shop's share
 - Every new booking is emailed to the shop
 - Shop profile (address, phone, hours, description) shown to customers
 
@@ -35,22 +35,26 @@ npm run seed     # optional: 3 demo shops and 10 cars (password: demo1234)
 npm start        # http://localhost:3000
 ```
 
-## Payments (Stripe)
+## Payments (Amazon Payment Services)
 
-Without `STRIPE_SECRET_KEY` (development only) payments are simulated on a test page at `/dev/pay`.
+Customers pay on the APS hosted payment page ("Redirection" integration). RentHub collects all payments and pays each shop its share.
+Without APS credentials (development only) payments are simulated on a test page at `/dev/pay`.
 
 To take real payments:
 
-1. Create a Stripe account and copy the secret key (`sk_test_…` for testing, `sk_live_…` when live) into `STRIPE_SECRET_KEY`.
-2. In Stripe → Settings → Payment methods, make sure Cards and Apple Pay are on (Google Pay too if you like). Checkout shows Apple Pay automatically in Safari on Apple devices.
-3. In Stripe → Developers → Webhooks, add an endpoint `https://<your-site>/stripe/webhook` listening to
-   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
-   `checkout.session.expired` and (enable "Listen to events on Connected accounts") `account.updated`.
-   Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
-4. To let shops get paid directly, enable **Connect** in the Stripe Dashboard. Shops then use *Payments → Connect with Stripe* in their portal.
-   Bookings at a connected shop are paid to that shop, minus `PLATFORM_FEE_PERCENT`. Bookings at shops that have not connected are paid to the platform's Stripe account.
+1. Get a merchant account from Amazon Payment Services. You receive a **sandbox** (test) account first.
+2. In the APS dashboard → **Integration Settings → Security Settings**, copy the Merchant Identifier, Access Code,
+   SHA Request Phrase and SHA Response Phrase, and set the SHA type to **SHA-256**. Put them in the `APS_*` variables.
+3. In **Integration Settings → Technical Settings**, set:
+   - Redirection URL / return URL: `https://<your-site>/payments/aps/return`
+   - Direct Transaction Feedback and Notification Feedback URL: `https://<your-site>/payments/aps/notify`
+4. Test with APS's sandbox test cards, then switch to your production account and set `APS_ENVIRONMENT=production`.
 
-Test cards: `4242 4242 4242 4242`, any future date, any CVC.
+How it works: the booking is created as `pending_payment` (holding the car for 30 minutes) and the browser is sent to APS with a signed request.
+APS sends the signed result back to `/payments/aps/return` and to `/payments/aps/notify`; both are verified with the SHA response phrase and are idempotent.
+If neither arrives, opening the booking page asks APS directly (`CHECK_STATUS`). Shop cancellations call APS `REFUND`.
+
+Apple Pay through APS needs extra setup (Apple Pay must be enabled on your APS account, and APS gives separate Apple Pay credentials). Ask your APS account manager whether it can be shown on the hosted payment page.
 
 ## Emails
 
@@ -59,7 +63,7 @@ To send real emails, set the SMTP variables from `.env.example`. Any SMTP provid
 
 ## Configuration
 
-Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET` and the four `APS_*` credentials.
 
 | Variable | Purpose |
 | --- | --- |
@@ -68,8 +72,10 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, `STR
 | `CURRENCY` | Price currency, e.g. `USD`, `AED`, `SAR` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing email |
 | `APP_URL` | Public site address used in payment return links |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe payments |
-| `PLATFORM_FEE_PERCENT` | Commission on bookings at connected shops |
+| `APS_MERCHANT_IDENTIFIER`, `APS_ACCESS_CODE`, `APS_SHA_REQUEST_PHRASE`, `APS_SHA_RESPONSE_PHRASE` | Amazon Payment Services credentials |
+| `APS_SHA_TYPE` | `sha256` (default) or `sha512` |
+| `APS_ENVIRONMENT` | `sandbox` (default) or `production` |
+| `PLATFORM_FEE_PERCENT` | RentHub's commission, shown on shops' Payments tab |
 | `DATABASE_FILE` | SQLite file path (default `data/app.db`) |
 | `UPLOAD_DIR` | Car photo folder (default `uploads/`) |
 
@@ -86,7 +92,7 @@ It creates a web service with a 1 GB persistent disk at `/var/data` for the data
 server.js            app setup, flash messages, test inbox
 src/db.js            SQLite schema
 src/bookings.js      availability, pricing, booking creation
-src/payments.js      Stripe Checkout, webhooks, refunds, Connect
+src/payments.js      Amazon Payment Services: checkout, signed results, status checks, refunds
 src/email.js         email templates and sending
 src/routes/public.js customer pages
 src/routes/shop.js   shop portal

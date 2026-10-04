@@ -14,8 +14,7 @@
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "multer": "^2.4.0",
-    "nodemailer": "^10.0.14",
-    "stripe": "^23.0.0"
+    "nodemailer": "^10.0.14"
   },
   "private": true,
   "engines": {

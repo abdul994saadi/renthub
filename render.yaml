@@ -25,9 +25,17 @@ services:
         value: "0"
       - key: APP_URL
         sync: false
-      - key: STRIPE_SECRET_KEY
+      - key: APS_ENVIRONMENT
+        value: sandbox
+      - key: APS_SHA_TYPE
+        value: sha256
+      - key: APS_MERCHANT_IDENTIFIER
         sync: false
-      - key: STRIPE_WEBHOOK_SECRET
+      - key: APS_ACCESS_CODE
+        sync: false
+      - key: APS_SHA_REQUEST_PHRASE
+        sync: false
+      - key: APS_SHA_RESPONSE_PHRASE
         sync: false
       - key: SMTP_HOST
         sync: false

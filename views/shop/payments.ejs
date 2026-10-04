@@ -1,20 +1,30 @@
 <%- include('../partials/head', { title: 'Payments' }) %>
 <div class="wrap section">
   <%- include('../partials/shop-nav') %>
-  <div class="card pad form narrow-form">
-    <h2>Getting paid</h2>
-    <p class="muted">Customers pay online by card or Apple Pay when they book. Cancelling a booking refunds the customer automatically.</p>
-    <% if (demoMode) { %>
-      <div class="alert alert-info">Stripe is not connected to this site yet (test mode), so payments are simulated.</div>
-    <% } else if (shop.stripe_charges_enabled) { %>
-      <div class="alert alert-success">✓ Your Stripe account is connected. Payments for your bookings are paid out to your bank account by Stripe.</div>
-      <% if (feePercent) { %><p class="small">RentHub keeps a <%= feePercent %>% service fee on each booking.</p><% } %>
-      <form method="post" action="/shop/payments/dashboard"><button class="btn btn-outline" type="submit">Open Stripe dashboard (payouts &amp; bank details)</button></form>
-    <% } else { %>
-      <p>Connect a free Stripe account so booking payments go straight to your bank account<%= feePercent ? ` (minus a ${feePercent}% RentHub service fee)` : '' %>. It takes about 5 minutes. You'll need your business and bank details.</p>
-      <p class="small muted">Until you connect, payments for your bookings are collected by RentHub and paid to you separately.</p>
-      <form method="post" action="/shop/payments/connect"><button class="btn btn-big" type="submit"><%= shop.stripe_account_id ? 'Continue setup' : 'Connect with Stripe' %></button></form>
+  <p class="muted">Customers pay online when they book. RentHub collects the payments and pays out your share. Cancelling a booking refunds the customer in full.</p>
+  <div class="stats">
+    <div class="card stat"><span class="muted small">Paid bookings</span><strong><%= totals.count %></strong></div>
+    <div class="card stat"><span class="muted small">Collected for you</span><strong><%= money(totals.gross) %></strong><span class="muted small">after refunds</span></div>
+    <% if (feePercent) { %>
+      <div class="card stat"><span class="muted small">RentHub fee (<%= feePercent %>%)</span><strong><%= money(fee) %></strong></div>
     <% } %>
+    <div class="card stat"><span class="muted small">Your share</span><strong><%= money(totals.gross - fee) %></strong></div>
+  </div>
+  <h2>Recent payments</h2>
+  <% if (!recent.length) { %><div class="empty card">No payments yet.</div><% } %>
+  <div class="list">
+    <% recent.forEach(b => { %>
+      <div class="card list-item">
+        <div>
+          <strong><%= b.year %> <%= b.make %> <%= b.model %></strong>
+          <div class="small muted"><%= b.reference %> · <%= b.customer_name %> · paid <%= b.paid_at %> UTC</div>
+        </div>
+        <div class="right">
+          <strong><%= money(b.total_price) %></strong>
+          <div><span class="chip <%= b.payment_status === 'paid' ? 'chip-green' : 'chip-red' %>"><%= b.payment_status %></span></div>
+        </div>
+      </div>
+    <% }) %>
   </div>
 </div>
 <%- include('../partials/foot') %>

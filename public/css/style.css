@@ -248,3 +248,4 @@ legend { font-weight: 600; padding: 0 6px; }
   .nav > a:not(.btn) { padding: 8px 6px; }
   .hero { padding-top: 28px; }
 }
+.right { text-align: right; }

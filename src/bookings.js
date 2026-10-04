@@ -3,8 +3,7 @@ const { db, transaction } = require('./db');
 const { daysBetween } = require('./helpers');
 
 // How long a car is held while the customer is on the payment page.
-// Stripe Checkout sessions last at least 30 minutes, so the hold is a little longer.
-const HOLD_MINUTES = 35;
+const HOLD_MINUTES = 30;
 
 // A car is taken by confirmed bookings and by unexpired payment holds.
 const BLOCKING = `(status = 'confirmed' OR (status = 'pending_payment' AND hold_expires_at > datetime('now')))`;
@@ -78,7 +77,7 @@ function recordPayment(bookingId, paymentIntentId) {
     const free = isCarAvailable(booking.car_id, booking.pickup_date, booking.return_date, booking.id);
     const status = free && ['pending_payment', 'expired'].includes(booking.status) ? 'confirmed' : 'cancelled';
     db.prepare(
-      `UPDATE bookings SET status = ?, payment_status = 'paid', stripe_payment_intent = ?, paid_at = datetime('now'),
+      `UPDATE bookings SET status = ?, payment_status = 'paid', payment_ref = ?, paid_at = datetime('now'),
          hold_expires_at = NULL WHERE id = ?`,
     ).run(status, paymentIntentId, booking.id);
     const updated = db.prepare('SELECT * FROM bookings WHERE id = ?').get(booking.id);
