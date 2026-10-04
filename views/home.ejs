@@ -38,7 +38,7 @@
 <section class="wrap section">
   <div class="steps">
     <div class="card step"><span class="step-n">1</span><h3>Find a car</h3><p>Search by city, dates and car type across every shop.</p></div>
-    <div class="card step"><span class="step-n">2</span><h3>Book &amp; pay online</h3><p>Pick your dates and pay securely online by card.</p></div>
+    <div class="card step"><span class="step-n">2</span><% if (payAtPickup) { %><h3>Book online</h3><p>Pick your dates and confirm. Pay the shop when you collect the car.</p><% } else { %><h3>Book &amp; pay online</h3><p>Pick your dates and pay securely online by card.</p><% } %></div>
     <div class="card step"><span class="step-n">3</span><h3>Get your confirmation</h3><p>We email you the booking details and shop address.</p></div>
   </div>
   <div class="card cta">

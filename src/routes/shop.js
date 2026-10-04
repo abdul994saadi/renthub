@@ -90,7 +90,7 @@ router.get('/', (req, res) => {
          (SELECT COUNT(*) FROM cars WHERE shop_id = ?) AS cars,
          (SELECT COUNT(*) FROM cars WHERE shop_id = ? AND is_active = 1) AS active_cars,
          (SELECT COUNT(*) FROM bookings WHERE shop_id = ? AND status = 'confirmed' AND return_date >= ?) AS upcoming,
-         (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE shop_id = ? AND payment_status = 'paid') AS revenue`,
+         (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE shop_id = ? AND status IN ('confirmed', 'completed')) AS revenue`,
     )
     .get(shopId, shopId, shopId, today, shopId);
   const upcoming = db

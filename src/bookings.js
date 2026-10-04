@@ -42,10 +42,11 @@ function newReference() {
   return `RH-${ref}`;
 }
 
-// Creates an unpaid booking that holds the car while the customer pays.
+// Creates an unpaid booking. With online payment it holds the car while the
+// customer pays (pending_payment); with pay at pick-up it is confirmed at once.
 // Availability is re-checked inside a write transaction so two customers
 // cannot hold the same car for overlapping dates. Returns null if taken.
-function createPendingBooking(car, details) {
+function createBooking(car, details, { payAtPickup = false } = {}) {
   return transaction(() => {
     if (!isCarAvailable(car.id, details.pickup, details.ret)) return null;
     const q = quote(car, details.pickup, details.ret);
@@ -53,10 +54,11 @@ function createPendingBooking(car, details) {
     db.prepare(
       `INSERT INTO bookings (reference, car_id, shop_id, customer_name, customer_email, customer_phone,
          pickup_date, return_date, days, daily_price, total_price, notes, status, hold_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment', datetime('now', ?))`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${payAtPickup ? 'NULL' : "datetime('now', ?)"})`,
     ).run(
       reference, car.id, car.shop_id, details.name, details.email, details.phone,
-      details.pickup, details.ret, q.days, q.dailyPrice, q.total, details.notes, `+${HOLD_MINUTES} minutes`,
+      details.pickup, details.ret, q.days, q.dailyPrice, q.total, details.notes,
+      ...(payAtPickup ? ['confirmed'] : ['pending_payment', `+${HOLD_MINUTES} minutes`]),
     );
     return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);
   });
@@ -92,5 +94,5 @@ function expireBooking(bookingId) {
 }
 
 module.exports = {
-  HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, quote, createPendingBooking, recordPayment, expireBooking,
+  HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, quote, createBooking, recordPayment, expireBooking,
 };

@@ -65,7 +65,7 @@ app.use((req, res, next) => {
 
 app.use(loadShop);
 app.use((req, res, next) => {
-  Object.assign(res.locals, helpers, { path: req.path, showOutbox: !isProduction, demoPayments: payments.demoMode });
+  Object.assign(res.locals, helpers, { path: req.path, showOutbox: !isProduction, demoPayments: payments.demoMode, payAtPickup: payments.payAtPickup });
   next();
 });
 
@@ -119,5 +119,5 @@ app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
   console.log(smtpConfigured ? 'Emails are sent through SMTP.'
     : isProduction ? 'WARNING: SMTP not configured, so no emails will be sent.' : 'SMTP not configured: emails are saved to /dev/outbox.');
-  console.log(payments.demoMode ? 'APS not configured: payments are simulated on /dev/pay.' : `Payments are processed by Amazon Payment Services (${payments.CHECKOUT_URL}).`);
+  console.log(payments.payAtPickup ? 'Payment mode: pay at pick-up (no online payment).' : payments.demoMode ? 'APS not configured: payments are simulated on /dev/pay.' : `Payments are processed by Amazon Payment Services (${payments.CHECKOUT_URL}).`);
 });

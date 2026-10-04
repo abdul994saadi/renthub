@@ -3,7 +3,7 @@
     <div class="card list-item booking-item">
       <div class="booking-main">
         <div><strong><%= b.year %> <%= b.make %> <%= b.model %></strong> <span class="chip chip-<%= b.status === 'confirmed' ? 'blue' : b.status === 'completed' ? 'green' : 'red' %>"><%= b.status %></span>
-          <span class="chip <%= b.payment_status === 'paid' ? 'chip-green' : '' %>"><%= b.payment_status %></span></div>
+          <span class="chip <%= b.payment_status === 'paid' ? 'chip-green' : '' %>"><%= b.payment_status === 'unpaid' ? 'pay at pick-up' : b.payment_status %></span></div>
         <div class="small"><%= formatDate(b.pickup_date) %> → <%= formatDate(b.return_date) %> · <%= b.days %> day<%= b.days === 1 ? '' : 's' %> · <strong><%= money(b.total_price) %></strong></div>
         <div class="small muted"><%= b.customer_name %> · <a href="mailto:<%= b.customer_email %>"><%= b.customer_email %></a> · <a href="tel:<%= b.customer_phone.replace(/[^\d+]/g, '') %>"><%= b.customer_phone %></a></div>
         <% if (b.notes) { %><div class="small">“<%= b.notes %>”</div><% } %>

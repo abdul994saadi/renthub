@@ -1,7 +1,10 @@
 <%- include('../partials/head', { title: 'Payments' }) %>
 <div class="wrap section">
   <%- include('../partials/shop-nav') %>
-  <p class="muted">Customers pay online when they book. RentHub collects the payments and pays out your share. Cancelling a booking refunds the customer in full.</p>
+  <% if (payAtPickup) { %>
+    <div class="alert alert-info">Online payment is not switched on yet. Customers pay you directly when they collect the car, so nothing is collected by RentHub for these bookings.</div>
+  <% } %>
+  <p class="muted">When online payment is on, customers pay when they book. RentHub collects the payments and pays out your share. Cancelling a booking refunds the customer in full.</p>
   <div class="stats">
     <div class="card stat"><span class="muted small">Paid bookings</span><strong><%= totals.count %></strong></div>
     <div class="card stat"><span class="muted small">Collected for you</span><strong><%= money(totals.gross) %></strong><span class="muted small">after refunds</span></div>

@@ -25,6 +25,8 @@ services:
         value: "0"
       - key: APP_URL
         sync: false
+      - key: PAYMENT_MODE
+        value: pickup
       - key: APS_ENVIRONMENT
         value: sandbox
       - key: APS_SHA_TYPE

@@ -58,7 +58,7 @@ function bookingTable(booking, car, shop) {
     ${row('Return', formatDate(booking.return_date))}
     ${row('Rental days', booking.days)}
     ${row('Daily rate', money(booking.daily_price))}
-    ${row(booking.payment_status === 'unpaid' ? 'Total' : 'Total paid online', money(booking.total_price))}
+    ${row(booking.payment_status === 'unpaid' ? 'Total (pay at pick-up)' : 'Total paid online', money(booking.total_price))}
     ${booking.payment_status === 'refunded' ? row('Refunded', money(booking.total_price)) : ''}
     ${car.deposit ? row('Refundable deposit (at pick-up)', money(car.deposit)) : ''}
   </table>
@@ -78,7 +78,11 @@ async function sendBookingEmails(booking, car, shop) {
     subject: `Booking confirmed: ${car.make} ${car.model} (${booking.reference})`,
     html: layout(
       `Your booking is confirmed, ${booking.customer_name}!`,
-      `<p style="font-size:14px">Thank you for booking with <strong>${esc(shop.name)}</strong>. Your payment of <strong>${money(booking.total_price)}</strong> was received. Bring your driving licence and this reference when you pick up the car.</p>
+      `<p style="font-size:14px">Thank you for booking with <strong>${esc(shop.name)}</strong>.
+       ${booking.payment_status === 'paid'
+         ? `Your payment of <strong>${money(booking.total_price)}</strong> was received.`
+         : `Please pay <strong>${money(booking.total_price)}</strong> to the shop when you pick up the car.`}
+       Bring your driving licence and this reference when you pick up the car.</p>
        ${bookingTable(booking, car, shop)}`,
     ),
   });
@@ -86,8 +90,10 @@ async function sendBookingEmails(booking, car, shop) {
     to: shop.email,
     subject: `New booking ${booking.reference}: ${car.make} ${car.model}`,
     html: layout(
-      'You have a new paid booking',
-      `<p style="font-size:14px">The customer has paid ${money(booking.total_price)} online.<br>Customer: <strong>${esc(booking.customer_name)}</strong><br>
+      booking.payment_status === 'paid' ? 'You have a new paid booking' : 'You have a new booking',
+      `<p style="font-size:14px">${booking.payment_status === 'paid'
+        ? `The customer has paid ${money(booking.total_price)} online.`
+        : `The customer will pay ${money(booking.total_price)} at pick-up.`}<br>Customer: <strong>${esc(booking.customer_name)}</strong><br>
        Email: ${esc(booking.customer_email)}<br>Phone: ${esc(booking.customer_phone)}
        ${booking.notes ? `<br>Notes: ${esc(booking.notes)}` : ''}</p>
        ${bookingTable(booking, car, shop)}`,

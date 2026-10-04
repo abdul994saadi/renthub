@@ -22,8 +22,15 @@ const API_URL = process.env.APS_API_URL
   || (live ? 'https://paymentservices.payfort.com/FortAPI/paymentApi' : 'https://sbpaymentservices.payfort.com/FortAPI/paymentApi');
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 0);
 
+// PAYMENT_MODE=pickup: no online payment; bookings are confirmed straight away
+// and the customer pays the shop when collecting the car.
+const payAtPickup = process.env.PAYMENT_MODE === 'pickup';
+if (process.env.PAYMENT_MODE && !['pickup', 'online'].includes(process.env.PAYMENT_MODE)) {
+  throw new Error('PAYMENT_MODE must be "online" or "pickup".');
+}
+
 const configured = Object.values(config).every(Boolean);
-if (isProduction && !configured) {
+if (isProduction && !payAtPickup && !configured) {
   throw new Error('APS_MERCHANT_IDENTIFIER, APS_ACCESS_CODE, APS_SHA_REQUEST_PHRASE and APS_SHA_RESPONSE_PHRASE must be set in production.');
 }
 if (configured && !['sha256', 'sha512'].includes(config.shaType)) {
@@ -31,7 +38,7 @@ if (configured && !['sha256', 'sha512'].includes(config.shaType)) {
 }
 
 // Without APS credentials (local development only) payments are simulated on /dev/pay.
-const demoMode = !configured;
+const demoMode = !payAtPickup && !configured;
 
 // APS status codes (the `status` field of a response).
 const STATUS = { PURCHASE_SUCCESS: '14', REFUND_SUCCESS: '06', CHECK_STATUS_SUCCESS: '12' };
@@ -173,6 +180,6 @@ async function refundBooking(booking) {
 }
 
 module.exports = {
-  demoMode, PLATFORM_FEE_PERCENT, CHECKOUT_URL,
+  payAtPickup, demoMode, PLATFORM_FEE_PERCENT, CHECKOUT_URL,
   sign, isValidResponse, startCheckout, handlePaid, handleApsResult, syncPendingBooking, abandonCheckout, refundBooking,
 };

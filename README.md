@@ -37,6 +37,9 @@ npm start        # http://localhost:3000
 
 ## Payments (Amazon Payment Services)
 
+`PAYMENT_MODE=pickup` turns online payment off: bookings are confirmed immediately and the customer pays the shop at pick-up
+(no APS credentials needed). `render.yaml` starts in this mode; change it to `online` once APS is set up.
+
 Customers pay on the APS hosted payment page ("Redirection" integration). RentHub collects all payments and pays each shop its share.
 Without APS credentials (development only) payments are simulated on a test page at `/dev/pay`.
 
@@ -63,7 +66,7 @@ To send real emails, set the SMTP variables from `.env.example`. Any SMTP provid
 
 ## Configuration
 
-Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET` and the four `APS_*` credentials.
+Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, plus the four `APS_*` credentials unless `PAYMENT_MODE=pickup`.
 
 | Variable | Purpose |
 | --- | --- |
@@ -73,6 +76,7 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET` and t
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing email |
 | `APP_URL` | Public site address used in payment return links |
 | `APS_MERCHANT_IDENTIFIER`, `APS_ACCESS_CODE`, `APS_SHA_REQUEST_PHRASE`, `APS_SHA_RESPONSE_PHRASE` | Amazon Payment Services credentials |
+| `PAYMENT_MODE` | `online` (default) or `pickup` |
 | `APS_SHA_TYPE` | `sha256` (default) or `sha512` |
 | `APS_ENVIRONMENT` | `sandbox` (default) or `production` |
 | `PLATFORM_FEE_PERCENT` | RentHub's commission, shown on shops' Payments tab |

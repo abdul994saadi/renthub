@@ -1,8 +1,9 @@
 const express = require('express');
 const { db } = require('../db');
 const { CATEGORIES, TRANSMISSIONS, validateDates, todayISO, isISODate } = require('../helpers');
-const { isCarAvailable, upcomingBookedRanges, quote, createPendingBooking } = require('../bookings');
-const { startCheckout, syncPendingBooking, abandonCheckout, handleApsResult } = require('../payments');
+const { isCarAvailable, upcomingBookedRanges, quote, createBooking } = require('../bookings');
+const { sendBookingEmails } = require('../email');
+const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult } = require('../payments');
 
 const router = express.Router();
 
@@ -118,7 +119,8 @@ router.post('/cars/:id/book', (req, res) => {
   res.render('review', { car, shop, d, q: quote(car, d.pickup, d.ret) });
 });
 
-// Step 2: the customer confirmed the summary. Hold the car and send them to pay.
+// Step 2: the customer confirmed the summary. Either confirm the booking (pay at
+// pick-up) or hold the car and send them to pay online.
 router.post('/cars/:id/confirm', async (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
@@ -126,8 +128,14 @@ router.post('/cars/:id/confirm', async (req, res) => {
   const error = validateBooking(d, car);
   if (error) return renderCarWithError(res, car, d, error);
 
-  const booking = createPendingBooking(car, d);
+  const booking = createBooking(car, d, { payAtPickup });
   if (!booking) return renderCarWithError(res, car, d, 'Sorry, someone just booked this car for those dates.');
+
+  if (payAtPickup) {
+    const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+    await sendBookingEmails(booking, car, shop);
+    return res.redirect(303, `/bookings/${booking.reference}`);
+  }
 
   const checkout = startCheckout(req, booking, car);
   if (checkout.redirect) return res.redirect(303, checkout.redirect);
