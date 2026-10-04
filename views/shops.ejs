@@ -1,0 +1,19 @@
+<%- include('partials/head', { title: 'Rental shops' }) %>
+<div class="wrap section">
+  <h1>Rental shops</h1>
+  <% if (shops.length) { %>
+    <div class="grid">
+      <% shops.forEach(s => { %>
+        <a class="card pad shop-card" href="/shops/<%= s.id %>">
+          <div class="avatar"><%= s.name.slice(0, 1).toUpperCase() %></div>
+          <h3><%= s.name %></h3>
+          <p class="muted small"><%= [s.address, s.city].filter(Boolean).join(', ') %></p>
+          <p class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %><%= s.from_price ? ' · from ' + money(s.from_price) + '/day' : '' %></p>
+        </a>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="empty card">No shops yet. <a href="/shop/register">Register yours</a>.</div>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

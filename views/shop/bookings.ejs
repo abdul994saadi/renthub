@@ -1,0 +1,12 @@
+<%- include('../partials/head', { title: 'Bookings' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <div class="pills">
+    <% [['', 'All'], ['confirmed', 'Confirmed'], ['completed', 'Completed'], ['cancelled', 'Cancelled']].forEach(([v, label]) => { %>
+      <a href="/shop/bookings<%= v ? '?status=' + v : '' %>" class="pill <%= status === v ? 'active' : '' %>"><%= label %></a>
+    <% }) %>
+  </div>
+  <% if (bookings.length) { %><%- include('bookings-list', { bookings }) %>
+  <% } else { %><div class="empty card">No bookings here yet.</div><% } %>
+</div>
+<%- include('../partials/foot') %>

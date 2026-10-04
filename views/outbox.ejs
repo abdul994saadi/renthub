@@ -1,0 +1,18 @@
+<%- include('partials/head', { title: 'Test inbox' }) %>
+<div class="wrap section">
+  <h1>Test inbox</h1>
+  <div class="alert alert-info">
+    <% if (smtpConfigured) { %>SMTP is configured, so these emails were also really sent. This page is a log.
+    <% } else { %>SMTP is not configured yet, so emails are only saved here. Add SMTP settings to send real emails.<% } %>
+  </div>
+  <% if (!emails.length) { %><div class="empty card">No emails yet. Make a booking to see one here.</div><% } %>
+  <div class="list">
+    <% emails.forEach(e => { %>
+      <a class="card list-item" href="/dev/outbox/<%= e.id %>" target="_blank" rel="noopener">
+        <div><strong><%= e.subject %></strong><div class="muted small">To <%= e.to_address %> · <%= e.created_at %> UTC</div></div>
+        <span class="chip <%= e.error ? 'chip-red' : e.delivered ? 'chip-green' : '' %>"><%= e.error ? 'Failed' : e.delivered ? 'Sent' : 'Saved' %></span>
+      </a>
+    <% }) %>
+  </div>
+</div>
+<%- include('partials/foot') %>

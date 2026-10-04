@@ -1,0 +1,72 @@
+<%- include('partials/head', { title: `${car.make} ${car.model}` }) %>
+<div class="wrap section">
+  <a href="/cars" class="back">← All cars</a>
+  <div class="detail">
+    <div class="detail-main">
+      <div class="card detail-media"><%- include('partials/car-image', { car }) %></div>
+      <div class="card pad">
+        <div class="title-row">
+          <h1><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h1>
+          <span class="chip"><%= car.category %></span>
+        </div>
+        <div class="spec-grid">
+          <div><span class="muted small">Gearbox</span><strong><%= car.transmission %></strong></div>
+          <div><span class="muted small">Fuel</span><strong><%= car.fuel %></strong></div>
+          <div><span class="muted small">Seats</span><strong><%= car.seats %></strong></div>
+          <div><span class="muted small">Doors</span><strong><%= car.doors %></strong></div>
+          <div><span class="muted small">Mileage</span><strong><%= car.mileage_policy %></strong></div>
+          <div><span class="muted small">Deposit</span><strong><%= car.deposit ? money(car.deposit) : 'None' %></strong></div>
+        </div>
+        <% if (car.description) { %><p class="prewrap"><%= car.description %></p><% } %>
+        <% const feats = carFeatures(car); if (feats.length) { %>
+          <h2 class="h3">Features</h2>
+          <ul class="features"><% feats.forEach(ft => { %><li><%= ft %></li><% }) %></ul>
+        <% } %>
+      </div>
+
+      <div class="card pad">
+        <h2 class="h3">Rental shop</h2>
+        <a href="/shops/<%= shop.id %>" class="shop-link"><strong><%= shop.name %></strong></a>
+        <% if (shop.description) { %><p class="muted"><%= shop.description %></p><% } %>
+        <dl class="info">
+          <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>
+          <% if (shop.phone) { %><dt>Phone</dt><dd><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a></dd><% } %>
+          <dt>Email</dt><dd><a href="mailto:<%= shop.email %>"><%= shop.email %></a></dd>
+          <% if (shop.opening_hours) { %><dt>Hours</dt><dd><%= shop.opening_hours %></dd><% } %>
+        </dl>
+      </div>
+    </div>
+
+    <aside class="detail-side">
+      <form class="card pad booking" method="post" action="/cars/<%= car.id %>/book" id="book">
+        <div class="price big"><%= money(car.daily_price) %><small>/day</small></div>
+        <h2 class="h3">Book this car</h2>
+        <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+        <div class="row-2">
+          <label>Pick-up date<input type="date" name="pickup" required min="<%= todayISO() %>" value="<%= form.pickup %>" data-pickup></label>
+          <label>Return date<input type="date" name="return" required min="<%= todayISO() %>" value="<%= form.return %>" data-return></label>
+        </div>
+        <p class="estimate muted small" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>"></p>
+        <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
+        <label>Email<input type="email" name="email" required autocomplete="email" value="<%= form.email || '' %>"></label>
+        <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>"></label>
+        <label>Notes for the shop (optional)<textarea name="notes" rows="2" maxlength="500" placeholder="e.g. child seat, arrival time"><%= form.notes || '' %></textarea></label>
+        <label class="check"><input type="checkbox" name="licence" required <%= form.licence ? 'checked' : '' %>> I hold a valid driving licence</label>
+        <button class="btn btn-big btn-block" type="submit">Continue to review</button>
+        <% if (booked.length) { %>
+          <div class="booked">
+            <span class="muted small">Already booked:</span>
+            <ul><% booked.forEach(b => { %><li><%= formatDate(b.pickup_date) %> – <%= formatDate(b.return_date) %></li><% }) %></ul>
+          </div>
+        <% } %>
+      </form>
+    </aside>
+  </div>
+
+  <% if (otherCars.length) { %>
+    <h2 class="section-title">More from <%= shop.name %></h2>
+    <div class="grid"><% otherCars.forEach(c => { %><%- include('partials/car-card', { car: c }) %><% }) %></div>
+  <% } %>
+</div>
+<script src="/js/booking.js"></script>
+<%- include('partials/foot') %>

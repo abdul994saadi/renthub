@@ -1,0 +1,13 @@
+<a class="card car-card" href="/cars/<%= car.id %><%= typeof query !== 'undefined' && query ? query : '' %>">
+  <div class="car-card-media"><%- include('car-image', { car }) %><span class="chip chip-float"><%= car.category %></span></div>
+  <div class="car-card-body">
+    <h3><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h3>
+    <ul class="specs">
+      <li><%= car.transmission %></li><li><%= car.seats %> seats</li><li><%= car.fuel %></li>
+    </ul>
+    <div class="car-card-foot">
+      <span class="muted small"><%= car.shop_name ? car.shop_name + (car.shop_city ? ' · ' + car.shop_city : '') : '' %></span>
+      <span class="price"><%= money(car.daily_price) %><small>/day</small></span>
+    </div>
+  </div>
+</a>

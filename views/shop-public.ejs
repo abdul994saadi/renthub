@@ -1,0 +1,20 @@
+<%- include('partials/head', { title: shop.name }) %>
+<div class="wrap section">
+  <a href="/shops" class="back">← All shops</a>
+  <div class="card pad shop-hero">
+    <div class="avatar big"><%= shop.name.slice(0, 1).toUpperCase() %></div>
+    <div>
+      <h1><%= shop.name %></h1>
+      <% if (shop.description) { %><p class="prewrap"><%= shop.description %></p><% } %>
+      <dl class="info">
+        <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>
+        <% if (shop.phone) { %><dt>Phone</dt><dd><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a></dd><% } %>
+        <dt>Email</dt><dd><a href="mailto:<%= shop.email %>"><%= shop.email %></a></dd>
+        <% if (shop.opening_hours) { %><dt>Hours</dt><dd><%= shop.opening_hours %></dd><% } %>
+      </dl>
+    </div>
+  </div>
+  <h2 class="section-title"><%= cars.length %> car<%= cars.length === 1 ? '' : 's' %> available</h2>
+  <div class="grid"><% cars.forEach(car => { %><%- include('partials/car-card', { car }) %><% }) %></div>
+</div>
+<%- include('partials/foot') %>

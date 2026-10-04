@@ -1,0 +1,29 @@
+<%- include('../partials/head', { title: 'My cars' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <div class="section-head">
+    <h2><%= cars.length %> car<%= cars.length === 1 ? '' : 's' %></h2>
+    <a href="/shop/cars/new" class="btn">+ Add car</a>
+  </div>
+  <% if (!cars.length) { %><div class="empty card">You have not added any cars yet. <a href="/shop/cars/new">Add your first car</a>.</div><% } %>
+  <div class="list">
+    <% cars.forEach(car => { %>
+      <div class="card list-item car-row <%= car.is_active ? '' : 'inactive' %>">
+        <div class="thumb"><%- include('../partials/car-image', { car }) %></div>
+        <div class="car-row-main">
+          <strong><%= car.year %> <%= car.make %> <%= car.model %></strong>
+          <% if (!car.is_active) { %><span class="chip chip-red">Hidden</span><% } %>
+          <div class="small muted"><%= car.category %> · <%= car.transmission %> · <%= car.seats %> seats</div>
+          <div class="small"><strong><%= money(car.daily_price) %></strong>/day · <%= car.booking_count %> active booking<%= car.booking_count === 1 ? '' : 's' %></div>
+        </div>
+        <div class="car-row-actions">
+          <a class="btn btn-small btn-outline" href="/shop/cars/<%= car.id %>/edit">Edit</a>
+          <% if (car.is_active) { %><a class="btn btn-small btn-ghost" href="/cars/<%= car.id %>">View</a><% } %>
+          <form method="post" action="/shop/cars/<%= car.id %>/toggle"><button class="btn btn-small btn-ghost"><%= car.is_active ? 'Hide' : 'Show' %></button></form>
+          <form method="post" action="/shop/cars/<%= car.id %>/delete" onsubmit="return confirm('Delete this car permanently?')"><button class="btn btn-small btn-danger">Delete</button></form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

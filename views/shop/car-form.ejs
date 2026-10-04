@@ -1,0 +1,53 @@
+<% const editing = Boolean(car.id); %>
+<%- include('../partials/head', { title: editing ? 'Edit car' : 'Add a car' }) %>
+<div class="wrap narrow section">
+  <a href="/shop/cars" class="back">← My cars</a>
+  <h1><%= editing ? `Edit ${car.make} ${car.model}` : 'Add a car' %></h1>
+  <form class="card pad form" method="post" action="<%= editing ? `/shop/cars/${car.id}` : '/shop/cars' %>" enctype="multipart/form-data">
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+    <label>Photo
+      <% if (car.image) { %><div class="thumb wide"><%- include('../partials/car-image', { car }) %></div><% } %>
+      <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/heic">
+      <span class="muted small"><%= car.image ? 'Choose a new photo to replace this one.' : 'JPG, PNG or WebP, up to 8 MB. You can take a photo with your camera.' %></span>
+    </label>
+    <% if (car.image) { %><label class="check"><input type="checkbox" name="remove_image"> Remove current photo</label><% } %>
+
+    <div class="row-3">
+      <label>Make<input name="make" required placeholder="Toyota" value="<%= car.make || '' %>"></label>
+      <label>Model<input name="model" required placeholder="Corolla" value="<%= car.model || '' %>"></label>
+      <label>Year<input type="number" name="year" required min="1980" max="<%= new Date().getFullYear() + 1 %>" value="<%= car.year || new Date().getFullYear() %>" inputmode="numeric"></label>
+    </div>
+    <div class="row-3">
+      <label>Category<select name="category" required><option value="">Choose…</option>
+        <% categories.forEach(c => { %><option <%= car.category === c ? 'selected' : '' %>><%= c %></option><% }) %></select></label>
+      <label>Gearbox<select name="transmission" required>
+        <% transmissions.forEach(t => { %><option <%= car.transmission === t ? 'selected' : '' %>><%= t %></option><% }) %></select></label>
+      <label>Fuel<select name="fuel" required>
+        <% fuels.forEach(fu => { %><option <%= car.fuel === fu ? 'selected' : '' %>><%= fu %></option><% }) %></select></label>
+    </div>
+    <div class="row-3">
+      <label>Seats<input type="number" name="seats" required min="1" max="20" value="<%= car.seats %>" inputmode="numeric"></label>
+      <label>Doors<input type="number" name="doors" min="2" max="6" value="<%= car.doors %>" inputmode="numeric"></label>
+      <label>Mileage<input name="mileage_policy" value="<%= car.mileage_policy %>" placeholder="Unlimited or 200 km/day"></label>
+    </div>
+    <div class="row-2">
+      <label>Price per day (<%= CURRENCY %>)<input type="number" name="daily_price" required min="1" step="0.01" value="<%= car.daily_price || '' %>" inputmode="decimal"></label>
+      <label>Refundable deposit (<%= CURRENCY %>)<input type="number" name="deposit" min="0" step="0.01" value="<%= car.deposit || 0 %>" inputmode="decimal"></label>
+    </div>
+
+    <fieldset>
+      <legend>Features</legend>
+      <% const current = carFeatures(car); const common = ['Air conditioning', 'Bluetooth', 'GPS', 'Apple CarPlay', 'Android Auto', 'Reversing camera', 'Cruise control', 'Child seat available', 'Sunroof', 'Leather seats', '4x4'];
+         common.forEach(ft => { %>
+        <label class="check"><input type="checkbox" name="features" value="<%= ft %>" <%= current.includes(ft) ? 'checked' : '' %>> <%= ft %></label>
+      <% }) %>
+      <label>Other features (comma separated)
+        <input name="extra_features" value="<%= current.filter(ft => !common.includes(ft)).join(', ') %>"></label>
+    </fieldset>
+
+    <label>Description<textarea name="description" rows="4" placeholder="Condition, rental rules, pick-up instructions…"><%= car.description || '' %></textarea></label>
+    <button class="btn btn-big btn-block" type="submit"><%= editing ? 'Save changes' : 'Add car' %></button>
+  </form>
+</div>
+<%- include('../partials/foot') %>

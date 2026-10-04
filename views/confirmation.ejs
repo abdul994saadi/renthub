@@ -1,0 +1,30 @@
+<%- include('partials/head', { title: 'Booking ' + booking.reference }) %>
+<div class="wrap narrow section">
+  <div class="card pad confirm">
+    <% if (booking.status === 'cancelled') { %>
+      <div class="confirm-icon cancelled">✕</div>
+      <h1>Booking cancelled</h1>
+      <p class="muted">This booking was cancelled by the rental shop.</p>
+    <% } else { %>
+      <div class="confirm-icon">✓</div>
+      <h1>Booking <%= booking.status === 'completed' ? 'completed' : 'confirmed' %>!</h1>
+      <p class="muted">We sent the details to <strong><%= booking.customer_email %></strong>.</p>
+    <% } %>
+    <div class="ref">Reference <strong><%= booking.reference %></strong></div>
+    <table class="summary">
+      <tr><td>Car</td><td><%= car.year %> <%= car.make %> <%= car.model %></td></tr>
+      <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %></td></tr>
+      <tr><td>Return</td><td><%= formatDate(booking.return_date) %></td></tr>
+      <tr><td>Days</td><td><%= booking.days %></td></tr>
+      <tr class="total"><td>Total (pay at pick-up)</td><td><%= money(booking.total_price) %></td></tr>
+      <% if (car.deposit) { %><tr><td>Refundable deposit</td><td><%= money(car.deposit) %></td></tr><% } %>
+    </table>
+    <h2 class="h3">Pick up from</h2>
+    <p><strong><%= shop.name %></strong><br><%= [shop.address, shop.city].filter(Boolean).join(', ') %>
+      <% if (shop.phone) { %><br><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a><% } %>
+      <% if (shop.opening_hours) { %><br><span class="muted"><%= shop.opening_hours %></span><% } %></p>
+    <p class="muted small">Bring your driving licence and this reference. Save this page to view your booking later.</p>
+    <a class="btn" href="/cars">Browse more cars</a>
+  </div>
+</div>
+<%- include('partials/foot') %>

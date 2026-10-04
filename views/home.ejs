@@ -1,0 +1,49 @@
+<%- include('partials/head') %>
+<section class="hero">
+  <div class="wrap">
+    <h1>Rent a car from trusted local shops</h1>
+    <p class="lead">Compare <%= stats.cars %> cars from <%= stats.shops %> rental shops and book in minutes.</p>
+    <form class="search card" action="/cars" method="get">
+      <label>City
+        <select name="city">
+          <option value="">Any city</option>
+          <% cities.forEach(c => { %><option><%= c %></option><% }) %>
+        </select>
+      </label>
+      <label>Pick-up<input type="date" name="pickup" min="<%= todayISO() %>"></label>
+      <label>Return<input type="date" name="return" min="<%= todayISO() %>"></label>
+      <label>Car type
+        <select name="category">
+          <option value="">Any type</option>
+          <% categories.forEach(c => { %><option><%= c %></option><% }) %>
+        </select>
+      </label>
+      <button class="btn btn-big" type="submit">Search cars</button>
+    </form>
+  </div>
+</section>
+
+<section class="wrap section">
+  <div class="section-head">
+    <h2>Newest cars</h2>
+    <a href="/cars">See all cars →</a>
+  </div>
+  <% if (featured.length) { %>
+    <div class="grid"><% featured.forEach(car => { %><%- include('partials/car-card', { car }) %><% }) %></div>
+  <% } else { %>
+    <div class="empty card">No cars listed yet. <a href="/shop/register">Register your shop</a> to add the first one.</div>
+  <% } %>
+</section>
+
+<section class="wrap section">
+  <div class="steps">
+    <div class="card step"><span class="step-n">1</span><h3>Find a car</h3><p>Search by city, dates and car type across every shop.</p></div>
+    <div class="card step"><span class="step-n">2</span><h3>Book online</h3><p>Pick your dates, check the price and confirm.</p></div>
+    <div class="card step"><span class="step-n">3</span><h3>Get your confirmation</h3><p>We email you the booking details and shop address.</p></div>
+  </div>
+  <div class="card cta">
+    <div><h3>Own a rental shop?</h3><p class="muted">List your cars for free and receive bookings straight to your inbox.</p></div>
+    <a class="btn" href="/shop/register">List your shop</a>
+  </div>
+</section>
+<%- include('partials/foot') %>

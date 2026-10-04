@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title: 'Dashboard' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <div class="stats">
+    <div class="card stat"><span class="muted small">Cars listed</span><strong><%= stats.active_cars %></strong><span class="muted small">of <%= stats.cars %> total</span></div>
+    <div class="card stat"><span class="muted small">Upcoming bookings</span><strong><%= stats.upcoming %></strong></div>
+    <div class="card stat"><span class="muted small">Booking value</span><strong><%= money(stats.revenue) %></strong><span class="muted small">all time, excl. cancelled</span></div>
+  </div>
+  <div class="section-head">
+    <h2>Upcoming bookings</h2>
+    <a href="/shop/cars/new" class="btn btn-small">+ Add car</a>
+  </div>
+  <% if (upcoming.length) { %>
+    <%- include('bookings-list', { bookings: upcoming }) %>
+  <% } else { %>
+    <div class="empty card">No upcoming bookings yet.<% if (!stats.cars) { %> <a href="/shop/cars/new">Add your first car</a> to start getting bookings.<% } %></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

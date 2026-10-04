@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title: 'Shop profile' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/shop/profile">
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <p class="muted small">Customers see these details on your cars, your shop page and in their confirmation emails. Booking emails go to <strong><%= currentShop.email %></strong>.</p>
+    <label>Shop name<input name="name" required value="<%= form.name %>"></label>
+    <div class="row-2">
+      <label>Phone<input type="tel" name="phone" value="<%= form.phone %>"></label>
+      <label>City<input name="city" required value="<%= form.city %>"></label>
+    </div>
+    <label>Street address<input name="address" value="<%= form.address %>"></label>
+    <label>Opening hours<input name="opening_hours" value="<%= form.opening_hours %>" placeholder="Sat–Thu 8:00–20:00"></label>
+    <label>About your shop<textarea name="description" rows="4"><%= form.description %></textarea></label>
+    <button class="btn btn-big" type="submit">Save profile</button>
+    <a class="small" href="/shops/<%= currentShop.id %>">View your public shop page →</a>
+  </form>
+</div>
+<%- include('../partials/foot') %>

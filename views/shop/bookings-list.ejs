@@ -1,0 +1,19 @@
+<div class="list">
+  <% bookings.forEach(b => { %>
+    <div class="card list-item booking-item">
+      <div class="booking-main">
+        <div><strong><%= b.year %> <%= b.make %> <%= b.model %></strong> <span class="chip chip-<%= b.status === 'confirmed' ? 'blue' : b.status === 'completed' ? 'green' : 'red' %>"><%= b.status %></span></div>
+        <div class="small"><%= formatDate(b.pickup_date) %> → <%= formatDate(b.return_date) %> · <%= b.days %> day<%= b.days === 1 ? '' : 's' %> · <strong><%= money(b.total_price) %></strong></div>
+        <div class="small muted"><%= b.customer_name %> · <a href="mailto:<%= b.customer_email %>"><%= b.customer_email %></a> · <a href="tel:<%= b.customer_phone.replace(/[^\d+]/g, '') %>"><%= b.customer_phone %></a></div>
+        <% if (b.notes) { %><div class="small">“<%= b.notes %>”</div><% } %>
+        <div class="small muted">Ref <%= b.reference %></div>
+      </div>
+      <% if (b.status === 'confirmed') { %>
+        <div class="booking-actions">
+          <form method="post" action="/shop/bookings/<%= b.id %>/status"><input type="hidden" name="status" value="completed"><button class="btn btn-small btn-outline">Mark completed</button></form>
+          <form method="post" action="/shop/bookings/<%= b.id %>/status" onsubmit="return confirm('Cancel this booking? The customer will be emailed.')"><input type="hidden" name="status" value="cancelled"><button class="btn btn-small btn-danger">Cancel</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% }) %>
+</div>

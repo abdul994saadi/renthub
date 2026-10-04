@@ -1,0 +1,23 @@
+{
+  "name": "renthub",
+  "version": "1.0.0",
+  "description": "Car rental marketplace: shops list cars, customers book and get email confirmations",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --watch server.js",
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.14"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.5"
+  }
+}

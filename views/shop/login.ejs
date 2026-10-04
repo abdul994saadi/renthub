@@ -1,0 +1,13 @@
+<%- include('../partials/head', { title: 'Shop login' }) %>
+<div class="wrap narrow section">
+  <h1>Shop login</h1>
+  <form class="card pad form" method="post" action="/shop/login">
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <input type="hidden" name="next" value="<%= next %>">
+    <label>Email<input type="email" name="email" required value="<%= email %>" autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+    <button class="btn btn-big btn-block" type="submit">Log in</button>
+    <p class="center small">New here? <a href="/shop/register">Register your shop</a></p>
+  </form>
+</div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,13 @@
+<div class="shop-bar">
+  <div>
+    <span class="muted small">Shop portal</span>
+    <strong><%= currentShop.name %></strong>
+  </div>
+  <form method="post" action="/shop/logout"><button class="btn btn-ghost btn-small" type="submit">Log out</button></form>
+</div>
+<nav class="tabs">
+  <a href="/shop" class="<%= path === '/shop' ? 'active' : '' %>">Dashboard</a>
+  <a href="/shop/cars" class="<%= path.startsWith('/shop/cars') ? 'active' : '' %>">Cars</a>
+  <a href="/shop/bookings" class="<%= path.startsWith('/shop/bookings') ? 'active' : '' %>">Bookings</a>
+  <a href="/shop/profile" class="<%= path.startsWith('/shop/profile') ? 'active' : '' %>">Profile</a>
+</nav>

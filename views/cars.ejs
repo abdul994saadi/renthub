@@ -1,0 +1,44 @@
+<%- include('partials/head', { title: 'Cars' }) %>
+<% const query = f.pickup && f.ret && !dateError ? `?pickup=${f.pickup}&return=${f.ret}` : ''; %>
+<div class="wrap section">
+  <h1>Available cars</h1>
+  <form class="filters card" method="get" action="/cars">
+    <label class="span-2">Search<input type="search" name="q" value="<%= f.q %>" placeholder="Make, model or shop"></label>
+    <label>City
+      <select name="city"><option value="">Any</option>
+        <% cities.forEach(c => { %><option <%= f.city === c ? 'selected' : '' %>><%= c %></option><% }) %>
+      </select>
+    </label>
+    <label>Type
+      <select name="category"><option value="">Any</option>
+        <% categories.forEach(c => { %><option <%= f.category === c ? 'selected' : '' %>><%= c %></option><% }) %>
+      </select>
+    </label>
+    <label>Gearbox
+      <select name="transmission"><option value="">Any</option>
+        <% transmissions.forEach(t => { %><option <%= f.transmission === t ? 'selected' : '' %>><%= t %></option><% }) %>
+      </select>
+    </label>
+    <label>Max price/day<input type="number" name="maxPrice" min="0" step="1" value="<%= f.maxPrice %>" inputmode="numeric"></label>
+    <label>Pick-up<input type="date" name="pickup" value="<%= f.pickup %>" min="<%= todayISO() %>"></label>
+    <label>Return<input type="date" name="return" value="<%= f.ret %>" min="<%= todayISO() %>"></label>
+    <label>Sort
+      <select name="sort">
+        <option value="price" <%= f.sort === 'price' ? 'selected' : '' %>>Price: low to high</option>
+        <option value="price_desc" <%= f.sort === 'price_desc' ? 'selected' : '' %>>Price: high to low</option>
+        <option value="newest" <%= f.sort === 'newest' ? 'selected' : '' %>>Newest</option>
+      </select>
+    </label>
+    <div class="filter-actions"><button class="btn" type="submit">Apply</button><a href="/cars" class="btn btn-ghost">Clear</a></div>
+  </form>
+
+  <% if (dateError) { %><div class="alert alert-error"><%= dateError %></div><% } %>
+  <p class="muted"><%= cars.length %> car<%= cars.length === 1 ? '' : 's' %> found<%= f.pickup && f.ret && !dateError ? ` free from ${formatDate(f.pickup)} to ${formatDate(f.ret)}` : '' %>.</p>
+
+  <% if (cars.length) { %>
+    <div class="grid"><% cars.forEach(car => { %><%- include('partials/car-card', { car, query }) %><% }) %></div>
+  <% } else { %>
+    <div class="empty card">No cars match your search. Try other dates or remove some filters.</div>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

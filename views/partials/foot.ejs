@@ -1,0 +1,15 @@
+</main>
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>© <%= new Date().getFullYear() %> RentHub</span>
+    <span>
+      <a href="/shop/register">List your rental shop</a>
+      <% if (showOutbox) { %> · <a href="/dev/outbox">Test inbox</a><% } %>
+    </span>
+  </div>
+</footer>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title: 'Register your shop' }) %>
+<div class="wrap narrow section">
+  <h1>List your rental shop</h1>
+  <p class="muted">Create a free account, add your cars, and get bookings by email.</p>
+  <form class="card pad form" method="post" action="/shop/register">
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <label>Shop name<input name="name" required value="<%= form.name || '' %>" autocomplete="organization"></label>
+    <div class="row-2">
+      <label>Email<input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email"></label>
+      <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel"></label>
+    </div>
+    <div class="row-2">
+      <label>City<input name="city" required value="<%= form.city || '' %>" autocomplete="address-level2"></label>
+      <label>Street address<input name="address" value="<%= form.address || '' %>" autocomplete="street-address"></label>
+    </div>
+    <label>Password (at least 8 characters)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn btn-big btn-block" type="submit">Create shop account</button>
+    <p class="center small">Already registered? <a href="/shop/login">Log in</a></p>
+  </form>
+</div>
+<%- include('../partials/foot') %>

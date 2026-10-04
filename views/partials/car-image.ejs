@@ -1,0 +1,11 @@
+<% if (car.image) { %>
+  <img src="/uploads/<%= car.image %>" alt="<%= car.make %> <%= car.model %>" loading="lazy" class="car-img">
+<% } else { const hue = (car.id * 47) % 360; %>
+  <svg class="car-img" viewBox="0 0 320 200" role="img" aria-label="<%= car.make %> <%= car.model %>">
+    <rect width="320" height="200" fill="hsl(<%= hue %> 60% 94%)"/>
+    <path d="M52 132 l14-34 c4-10 12-16 24-16 h96 c10 0 18 4 25 12 l26 30 h20 c10 0 17 7 17 17 v13 h-20 M52 132 h-6 c-6 0-10 4-10 10 v12 h22 M98 154 h126"
+      fill="none" stroke="hsl(<%= hue %> 55% 45%)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="80" cy="154" r="18" fill="hsl(<%= hue %> 55% 45%)"/><circle cx="242" cy="154" r="18" fill="hsl(<%= hue %> 55% 45%)"/>
+    <path d="M96 116 l10-22 h50 v22 z M170 116 v-22 h22 l20 22 z" fill="hsl(<%= hue %> 60% 82%)"/>
+  </svg>
+<% } %>
