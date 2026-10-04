@@ -71,8 +71,14 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, `STR
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe payments |
 | `PLATFORM_FEE_PERCENT` | Commission on bookings at connected shops |
 | `DATABASE_FILE` | SQLite file path (default `data/app.db`) |
+| `UPLOAD_DIR` | Car photo folder (default `uploads/`) |
 
 Data is stored in SQLite (`data/`) and photos in `uploads/`. When hosting, put both on a persistent disk.
+
+## Deploy to Render
+
+`render.yaml` describes the whole setup. In Render choose **New → Blueprint**, pick this repository, and fill in the secret values it asks for.
+It creates a web service with a 1 GB persistent disk at `/var/data` for the database and photos (needs a paid instance; the free tier has no disk).
 
 ## Project layout
 

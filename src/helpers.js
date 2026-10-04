@@ -1,4 +1,7 @@
+const path = require('node:path');
+
 const CURRENCY = process.env.CURRENCY || 'USD';
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 
 const CATEGORIES = ['Economy', 'Compact', 'Sedan', 'SUV', 'Luxury', 'Sports', 'Van', 'Pickup', 'Electric'];
 const TRANSMISSIONS = ['Automatic', 'Manual'];
@@ -40,6 +43,6 @@ function carFeatures(car) {
 }
 
 module.exports = {
-  CURRENCY, CATEGORIES, TRANSMISSIONS, FUELS,
+  CURRENCY, UPLOAD_DIR, CATEGORIES, TRANSMISSIONS, FUELS,
   money, formatDate, todayISO, isISODate, daysBetween, validateDates, carFeatures,
 };

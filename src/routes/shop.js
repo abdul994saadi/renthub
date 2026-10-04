@@ -11,7 +11,7 @@ const payments = require('../payments');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
+const { UPLOAD_DIR } = require('../helpers');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic' };

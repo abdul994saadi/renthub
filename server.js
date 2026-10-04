@@ -26,7 +26,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: isProduction ? '1d' : 0 }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d' }));
+app.use('/uploads', express.static(helpers.UPLOAD_DIR, { maxAge: '7d' }));
 
 // Stripe needs the exact raw body to verify the webhook signature, so this comes before the body parser.
 app.post('/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
@@ -116,6 +116,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
-  console.log(smtpConfigured ? 'Emails are sent through SMTP.' : 'SMTP not configured: emails are saved to /dev/outbox.');
+  console.log(smtpConfigured ? 'Emails are sent through SMTP.'
+    : isProduction ? 'WARNING: SMTP not configured, so no emails will be sent.' : 'SMTP not configured: emails are saved to /dev/outbox.');
   console.log(payments.demoMode ? 'Stripe not configured: payments are simulated on /dev/pay.' : 'Payments are processed by Stripe.');
 });
