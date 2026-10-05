@@ -1,0 +1,20 @@
+<%- include('../partials/head', { title: 'Reviews' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <p class="muted">Customers can review a rental once it has ended, through the link emailed to them (one review per booking). Hide reviews that are abusive or break your rules; hidden reviews do not count in ratings.</p>
+  <% if (!reviews.length) { %><div class="empty card">No reviews yet.</div><% } %>
+  <div class="list">
+    <% reviews.forEach(r => { %>
+      <div class="card list-item booking-item <%= r.hidden ? 'inactive' : '' %>">
+        <div class="booking-main">
+          <div><%- include('../partials/stars', { value: r.rating }) %> <strong><%= r.customer_name %></strong> · <%= r.make %> <%= r.model %> · <%= r.shop_name %>
+            <% if (r.hidden) { %><span class="chip chip-red">Hidden</span><% } %></div>
+          <% if (r.comment) { %><div class="small prewrap"><%= r.comment %></div><% } %>
+          <div class="small muted"><%= r.created_at.slice(0, 16) %> UTC</div>
+        </div>
+        <form method="post" action="/admin/reviews/<%= r.id %>/<%= r.hidden ? 'show' : 'hide' %>"><button class="btn btn-small <%= r.hidden ? 'btn-outline' : 'btn-danger' %>"><%= r.hidden ? 'Show' : 'Hide' %></button></form>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

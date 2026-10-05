@@ -1,0 +1,5 @@
+<%# Star rating display. value: 0-5, count: number of reviews (optional) %>
+<span class="stars" title="<%= value %> out of 5" aria-label="Rated <%= value %> out of 5">
+  <% for (let i = 1; i <= 5; i++) { %><span class="star <%= value >= i - 0.25 ? 'on' : value >= i - 0.75 ? 'half' : '' %>">★</span><% } %>
+  <% if (typeof count !== 'undefined') { %><span class="stars-text"><%= value ? value.toFixed(1) : '' %> (<%= count %>)</span><% } %>
+</span>

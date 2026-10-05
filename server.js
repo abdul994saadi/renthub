@@ -125,6 +125,8 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
+  if (process.env.DISABLE_SCHEDULER !== '1') require('./src/scheduler').start();
+  console.log(require('./src/whatsapp').enabled ? 'Automatic WhatsApp messages are on.' : 'Automatic WhatsApp messages are off (WHATSAPP_TOKEN not set).');
   if (email.smtpSummary().configured) {
     const { host, port, user } = email.smtpSummary();
     email.verifySmtp().then((r) => console.log(r.ok

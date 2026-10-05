@@ -8,6 +8,7 @@
           <div class="avatar"><%= s.name.slice(0, 1).toUpperCase() %></div>
           <h3><%= s.name %> <% if (s.verified) { %><%- include('partials/verified') %><% } %></h3>
           <p class="muted small"><%= [s.address, s.city].filter(Boolean).join(', ') %></p>
+          <% if (s.review_count) { %><div class="small"><%- include('partials/stars', { value: s.rating, count: s.review_count }) %></div><% } %>
           <p class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %><%= s.from_price ? ' · from ' + money(s.from_price) + '/day' : '' %></p>
         </a>
       <% }) %>

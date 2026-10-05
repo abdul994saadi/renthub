@@ -258,6 +258,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .lbp { margin-top: -8px; }
 .cancel-box { text-align: left; border-top: 1px solid var(--border); margin: 20px 0; padding-top: 16px; }
 .cancel-box p { margin: 0 0 12px; }
+.docs-box { display: grid; gap: 12px; }
+.docs-box h2, .docs-box p { margin: 0; }
 .booking-dates { grid-template-columns: 1fr 1fr; }
 .booking-dates > label:last-child { grid-column: 1 / -1; }
 .ref { background: var(--primary-soft); border-radius: 10px; padding: 12px; margin: 16px 0; font-size: 1.1rem; letter-spacing: 0.04em; }
@@ -310,3 +312,21 @@ legend { font-weight: 600; padding: 0 6px; }
 }
 .right { text-align: right; }
 .promo-code { font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.05em; }
+.stars { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; }
+.star { color: var(--border); font-size: 1em; }
+.star.on { color: #f59e0b; }
+.star.half { background: linear-gradient(90deg, #f59e0b 50%, var(--border) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.stars-text { margin-left: 4px; font-size: 0.85em; color: var(--muted); }
+.star-input { border: none; padding: 0; }
+.star-choices { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; }
+.star-choices input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.star-choices label { font-size: 2.4rem; line-height: 1; color: var(--border); cursor: pointer; }
+.star-choices input:checked ~ label, .star-choices label:hover, .star-choices label:hover ~ label { color: #f59e0b; }
+.star-choices input:focus-visible + label { outline: 2px solid var(--primary); border-radius: 4px; }
+.review { border-top: 1px solid var(--border); padding: 12px 0; }
+.review:first-of-type { border-top: none; }
+.review p { margin: 6px 0 0; }
+.rating-line { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; }
+.btn-whatsapp { background: #25d366; border-color: #25d366; color: #0b2e17; }
+.btn-whatsapp:hover { background: #1ebe5a; }
+.detail-main .btn-whatsapp { margin-top: 14px; }

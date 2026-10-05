@@ -11,11 +11,19 @@
         <% if (b.extras && b.extras.length) { %><div class="small"><strong>Extras:</strong> <%= b.extras.map(e => e.name).join(', ') %></div><% } %>
         <% if (b.promo_code) { %><div class="small muted">Promo <%= b.promo_code %>: −<%= money(b.discount) %></div><% } %>
         <% if (b.notes) { %><div class="small">“<%= b.notes %>”</div><% } %>
+        <% if (b.status === 'confirmed' || (b.documents && b.documents.length)) { %>
+          <div class="small">Documents:
+            <% if (b.documents && b.documents.length) { b.documents.forEach((d, i) => { %><%= i ? ' · ' : '' %><a href="/shop/bookings/<%= b.id %>/documents/<%= d.id %>" target="_blank" rel="noopener"><%= d.kind === 'licence' ? 'Driving licence' : 'ID / passport' %></a><% }) } else { %><span class="muted">not uploaded yet</span><% } %>
+          </div>
+        <% } %>
         <% if (b.status === 'cancelled' && b.cancelled_by) { %><div class="small muted">Cancelled by <%= b.cancelled_by === 'customer' ? 'the customer' : 'your shop' %><%= b.cancelled_at ? ` on ${b.cancelled_at.slice(0, 16)} UTC` : '' %></div><% } %>
         <div class="small muted">Ref <%= b.reference %></div>
       </div>
       <% if (b.status === 'confirmed') { %>
         <div class="booking-actions">
+          <% const wa = whatsappLink(b.customer_phone, `Hello ${b.customer_name}, this is ${currentShop.name}. Your booking ${b.reference} for the ${b.year} ${b.make} ${b.model} is confirmed: pick-up ${formatDate(b.pickup_date)} at ${formatTime(b.pickup_time)}, return by ${formatDate(b.return_date)}. Total ${money(b.total_price)}. See you soon!`); if (wa) { %>
+            <a class="btn btn-small btn-whatsapp" href="<%= wa %>" target="_blank" rel="noopener"><%- include('../partials/wa-icon') %> WhatsApp</a>
+          <% } %>
           <form method="post" action="/shop/bookings/<%= b.id %>/status"><input type="hidden" name="status" value="completed"><button class="btn btn-small btn-outline">Mark completed</button></form>
           <form method="post" action="/shop/bookings/<%= b.id %>/status" onsubmit="return confirm('Cancel this booking? <%= b.payment_status === 'paid' ? 'The customer will get a full refund and an email.' : 'The customer will be emailed.' %>')"><input type="hidden" name="status" value="cancelled"><button class="btn btn-small btn-danger">Cancel</button></form>
         </div>

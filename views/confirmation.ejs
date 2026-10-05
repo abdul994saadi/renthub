@@ -43,6 +43,30 @@
       <% if (shop.phone) { %><br><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a><% } %>
       <% if (shop.opening_hours) { %><br><span class="muted"><%= shop.opening_hours %></span><% } %></p>
     <% if (s === 'confirmed') { %><p class="muted small">Bring your driving licence and this reference.</p><% } %>
+    <% const wa = whatsappLink(shop.whatsapp || shop.phone, `Hello ${shop.name}, about my RentHub booking ${booking.reference}: `); if (wa && ['confirmed', 'completed'].includes(s)) { %>
+      <p><a class="btn btn-whatsapp" href="<%= wa %>" target="_blank" rel="noopener"><%- include('partials/wa-icon') %> Message the shop on WhatsApp</a></p>
+    <% } %>
+    <% if (canReview) { %>
+      <div class="cancel-box">
+        <h2 class="h3">How was your rental?</h2>
+        <p class="small">Help other customers by rating the car and the shop.</p>
+        <a class="btn" href="/bookings/<%= booking.reference %>/review?t=<%= token %>">Leave a review</a>
+      </div>
+    <% } %>
+    <% if (canUploadDocs) { %>
+      <form class="cancel-box docs-box" method="post" action="/bookings/<%= booking.reference %>/documents" enctype="multipart/form-data">
+        <h2 class="h3">Driver documents</h2>
+        <p class="small">Upload photos of your documents before pick-up to make the hand-over faster. Only the rental shop can see them.</p>
+        <input type="hidden" name="t" value="<%= token %>">
+        <% Object.entries(docKinds).forEach(([kind, label]) => { const doc = documents.find(d => d.kind === kind); %>
+          <label><%= label %> <% if (doc) { %><span class="chip chip-green">✓ Uploaded</span><% } %>
+            <input type="file" name="<%= kind %>" accept="image/*,application/pdf">
+            <% if (doc) { %><span class="muted small">Choose a new file to replace it.</span><% } %>
+          </label>
+        <% }) %>
+        <button class="btn btn-outline" type="submit">Upload documents</button>
+      </form>
+    <% } %>
     <% if (policy.canCancel) { %>
       <div class="cancel-box">
         <h2 class="h3">Cancel booking</h2>

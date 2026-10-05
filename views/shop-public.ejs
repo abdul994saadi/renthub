@@ -5,6 +5,7 @@
     <div class="avatar big"><%= shop.name.slice(0, 1).toUpperCase() %></div>
     <div>
       <h1><%= shop.name %> <% if (shop.verified) { %><%- include('partials/verified') %><% } %></h1>
+      <% if (rating.count) { %><div class="rating-line"><%- include('partials/stars', { value: rating.average, count: rating.count }) %></div><% } %>
       <% if (shop.description) { %><p class="prewrap"><%= shop.description %></p><% } %>
       <dl class="info">
         <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>
@@ -12,9 +13,25 @@
         <dt>Email</dt><dd><a href="mailto:<%= shop.email %>"><%= shop.email %></a></dd>
         <% if (shop.opening_hours) { %><dt>Hours</dt><dd><%= shop.opening_hours %></dd><% } %>
       </dl>
+      <% const wa = whatsappLink(shop.whatsapp || shop.phone, `Hello ${shop.name}, I found you on RentHub.`); if (wa) { %>
+        <a class="btn btn-whatsapp" href="<%= wa %>" target="_blank" rel="noopener"><%- include('partials/wa-icon') %> Chat on WhatsApp</a>
+      <% } %>
     </div>
   </div>
   <h2 class="section-title"><%= cars.length %> car<%= cars.length === 1 ? '' : 's' %> available</h2>
   <div class="grid"><% cars.forEach(car => { %><%- include('partials/car-card', { car }) %><% }) %></div>
 </div>
+<% if (reviews.length) { %>
+<div class="wrap section">
+  <h2 class="section-title">What customers say</h2>
+  <div class="card pad">
+    <% reviews.forEach(r => { %>
+      <div class="review">
+        <div><%- include('partials/stars', { value: r.rating }) %> <strong><%= r.customer_name %></strong> <span class="muted small">rented the <%= r.make %> <%= r.model %> · <%= formatDate(r.created_at.slice(0, 10)) %></span></div>
+        <% if (r.comment) { %><p class="prewrap"><%= r.comment %></p><% } %>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
 <%- include('partials/foot') %>

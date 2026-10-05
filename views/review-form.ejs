@@ -1,0 +1,23 @@
+<%- include('partials/head', { title: 'Rate your rental' }) %>
+<div class="wrap narrow section">
+  <form class="card pad form" method="post" action="/bookings/<%= booking.reference %>/review">
+    <h1>How was your rental?</h1>
+    <p class="muted"><%= car.year %> <%= car.make %> <%= car.model %> from <strong><%= shop.name %></strong>, <%= formatDate(booking.pickup_date) %> – <%= formatDate(booking.return_date) %></p>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <input type="hidden" name="t" value="<%= token %>">
+    <fieldset class="star-input">
+      <legend>Your rating</legend>
+      <div class="star-choices">
+        <% for (let i = 5; i >= 1; i--) { %>
+          <input type="radio" id="star<%= i %>" name="rating" value="<%= i %>" <%= Number(form.rating) === i ? 'checked' : '' %> required>
+          <label for="star<%= i %>" title="<%= i %> star<%= i === 1 ? '' : 's' %>">★</label>
+        <% } %>
+      </div>
+    </fieldset>
+    <label>Tell other customers about the car and the shop (optional)
+      <textarea name="comment" rows="4" maxlength="1000" placeholder="Was the car clean? Was the hand-over easy?"><%= form.comment || '' %></textarea></label>
+    <p class="muted small">Your first name and review will be shown on the car's page.</p>
+    <button class="btn btn-big" type="submit">Submit review</button>
+  </form>
+</div>
+<%- include('partials/foot') %>

@@ -10,6 +10,10 @@ const { sendCancellationEmail } = require('../email');
 const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
 const { shopExtras, withExtras } = require('../pricing');
+const documents = require('../documents');
+
+// Booking rows for lists: chosen extras and uploaded driver documents.
+const withDetails = (bookings) => withExtras(bookings).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) }));
 
 const router = express.Router();
 
@@ -111,7 +115,7 @@ router.get('/', (req, res) => {
        ORDER BY bookings.pickup_date LIMIT 8`,
     )
     .all(shopId, today);
-  res.render('shop/dashboard', { stats, upcoming: withExtras(upcoming) });
+  res.render('shop/dashboard', { stats, upcoming: withDetails(upcoming) });
 });
 
 // ---------- Cars ----------
@@ -266,7 +270,17 @@ router.get('/bookings', (req, res) => {
        ORDER BY bookings.pickup_date DESC`,
     )
     .all(...[req.shop.id, status].filter(Boolean));
-  res.render('shop/bookings', { bookings: withExtras(bookings), status });
+  res.render('shop/bookings', { bookings: withDetails(bookings), status });
+});
+
+// A customer's driver document, only for the shop that owns the booking.
+router.get('/bookings/:id/documents/:docId', (req, res) => {
+  const doc = db.prepare(
+    `SELECT booking_documents.* FROM booking_documents JOIN bookings ON bookings.id = booking_documents.booking_id
+     WHERE booking_documents.id = ? AND bookings.id = ? AND bookings.shop_id = ?`,
+  ).get(Number(req.params.docId), Number(req.params.id), req.shop.id);
+  if (!doc) return res.status(404).render('error', { title: 'Not found', message: 'This document does not exist.' });
+  documents.sendDocument(res, doc);
 });
 
 router.post('/bookings/:id/status', async (req, res) => {

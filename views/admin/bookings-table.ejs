@@ -6,6 +6,7 @@
           <span class="chip chip-<%= b.status === 'confirmed' ? 'blue' : b.status === 'completed' ? 'green' : 'red' %>"><%= b.status %></span>
           <span class="chip <%= b.payment_status === 'paid' ? 'chip-green' : '' %>"><%= b.payment_status === 'unpaid' ? 'pay at pick-up' : b.payment_status %></span></div>
         <div class="small"><%= formatDate(b.pickup_date) %>, <%= formatTime(b.pickup_time) %> → <%= formatDate(b.return_date) %> · <strong><%= money(b.total_price) %></strong><%= b.promo_code ? ` · code ${b.promo_code}` : '' %></div>
+        <% if (b.documents && b.documents.length) { %><div class="small">Documents: <% b.documents.forEach((d, i) => { %><%= i ? ' · ' : '' %><a href="/admin/bookings/<%= b.id %>/documents/<%= d.id %>" target="_blank" rel="noopener"><%= d.kind === 'licence' ? 'Driving licence' : 'ID / passport' %></a> <% }) %></div><% } %>
         <div class="small muted"><%= b.customer_name %> · <%= b.customer_email %> · <%= b.customer_phone %> · Ref <%= b.reference %> · booked <%= b.created_at.slice(0, 16) %> UTC</div>
       </div>
     </div>

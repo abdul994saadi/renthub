@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const { db } = require('./db');
-const { money, formatDate, formatTime, formatDateTime, FREE_CANCELLATION_HOURS } = require('./helpers');
+const { money, formatDate, formatTime, formatDateTime, whatsappLink, FREE_CANCELLATION_HOURS } = require('./helpers');
+const whatsapp = require('./whatsapp');
 const { cancellationPolicy } = require('./bookings');
 const { bookingExtras } = require('./pricing');
 
@@ -141,9 +142,12 @@ async function sendBookingEmails(booking, car, shop) {
          : `Please pay <strong>${money(booking.total_price)}</strong> to the shop when you pick up the car.`}
        Bring your driving licence and this reference when you pick up the car.</p>
        ${bookingTable(booking, car, shop)}
+       ${docsSection(booking)}
+       ${whatsappSection(booking, shop)}
        ${manageSection(booking)}`,
     ),
   });
+  await whatsapp.notifyCustomer('confirmation', booking, car, shop);
   await sendEmail({
     to: shop.email,
     replyTo: booking.customer_email,
@@ -165,6 +169,18 @@ function button(href, label) {
 }
 
 // Cancellation policy + the customer's private link to view or cancel the booking.
+const manageUrl = (booking) => `${SITE_URL}/bookings/${booking.reference}?t=${booking.manage_token}`;
+
+// Link for the customer to message the shop on WhatsApp.
+function whatsappSection(booking, shop) {
+  const link = whatsappLink(shop.whatsapp || shop.phone, `Hello ${shop.name}, about my RentHub booking ${booking.reference}: `);
+  return link ? `<p style="font-size:14px;margin:16px 0 0">Questions? <a href="${esc(link)}">Message ${esc(shop.name)} on WhatsApp</a>.</p>` : '';
+}
+
+const docsSection = (booking) => (booking.manage_token
+  ? `<p style="font-size:14px;margin:16px 0 0">Save time at pick-up: <a href="${esc(manageUrl(booking))}">upload a photo of your driving licence and ID</a> before you arrive.</p>`
+  : '');
+
 function manageSection(booking) {
   if (!booking.manage_token) return '';
   const { deadline } = cancellationPolicy(booking);
@@ -216,6 +232,58 @@ async function sendTestEmail(to) {
   return db.prepare('SELECT * FROM emails ORDER BY id DESC LIMIT 1').get();
 }
 
+// ---------- Reminders (sent by the scheduler) ----------
+
+async function sendPickupReminder(booking, car, shop) {
+  const when = `${formatDate(booking.pickup_date)} at ${formatTime(booking.pickup_time)}`;
+  const where = booking.pickup_method === 'delivery' ? `delivered to ${esc(booking.delivery_address)}`
+    : booking.pickup_method === 'airport' ? 'at Beirut airport' : `at ${esc([shop.address, shop.city].filter(Boolean).join(', '))}`;
+  await sendEmail({
+    to: booking.customer_email,
+    replyTo: shop.email,
+    subject: `Reminder: your ${car.make} ${car.model} pick-up is ${when}`,
+    html: layout(
+      `See you soon, ${booking.customer_name}!`,
+      `<p style="font-size:14px">Your rental starts <strong>${esc(when)}</strong>, ${where}. Bring your driving licence and your booking reference <strong>${esc(booking.reference)}</strong>.</p>
+       ${bookingTable(booking, car, shop)}
+       ${docsSection(booking)}
+       ${whatsappSection(booking, shop)}`,
+    ),
+  });
+  await sendEmail({
+    to: shop.email,
+    replyTo: booking.customer_email,
+    subject: `Pick-up ${when}: ${car.make} ${car.model} for ${booking.customer_name}`,
+    html: layout('Upcoming pick-up', `<p style="font-size:14px"><strong>${esc(booking.customer_name)}</strong> (${esc(booking.customer_phone)}) picks up the car <strong>${esc(when)}</strong>.</p>
+      ${bookingTable(booking, car, shop)}`),
+  });
+  await whatsapp.notifyCustomer('pickup_reminder', booking, car, shop);
+}
+
+async function sendReturnReminder(booking, car, shop) {
+  const when = `${formatDate(booking.return_date)} at ${formatTime(booking.pickup_time)}`;
+  await sendEmail({
+    to: booking.customer_email,
+    replyTo: shop.email,
+    subject: `Reminder: please return the ${car.make} ${car.model} by ${when}`,
+    html: layout('Your rental ends soon', `<p style="font-size:14px">Please return the car to <strong>${esc(shop.name)}</strong> by <strong>${esc(when)}</strong>.
+      If you need more time, contact the shop before then.</p>${whatsappSection(booking, shop)}`),
+  });
+}
+
+async function sendReviewRequest(booking, car, shop) {
+  const url = `${SITE_URL}/bookings/${booking.reference}/review?t=${booking.manage_token}`;
+  const stars = [5, 4, 3, 2, 1].map((n) => `<a href="${esc(`${url}&rating=${n}`)}" style="text-decoration:none;font-size:28px;color:#f59e0b">${'★'.repeat(n)}</a>`).join('<br>');
+  await sendEmail({
+    to: booking.customer_email,
+    replyTo: shop.email,
+    subject: `How was your ${car.make} ${car.model} from ${shop.name}?`,
+    html: layout(`Thank you for renting with ${shop.name}`, `<p style="font-size:14px">How was the car and the service? Tap a rating to leave a quick review:</p>
+      <p style="margin:12px 0;line-height:1.4">${stars}</p>
+      <p style="margin:16px 0 0">${button(url, 'Write a review')}</p>`),
+  });
+}
+
 async function sendCancellationEmail(booking, car, shop) {
   await sendEmail({
     to: booking.customer_email,
@@ -245,4 +313,4 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
+module.exports = { sendPickupReminder, sendReturnReminder, sendReviewRequest, htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };

@@ -51,3 +51,11 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_TEMPLATE_CONFIRMATION
+        sync: false
+      - key: WHATSAPP_TEMPLATE_PICKUP_REMINDER
+        sync: false

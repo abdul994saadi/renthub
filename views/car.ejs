@@ -6,7 +6,10 @@
       <%- include('partials/gallery', { car, photos }) %>
       <div class="card pad">
         <div class="title-row">
-          <h1><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h1>
+          <div>
+            <h1><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h1>
+            <% if (rating.count) { %><a href="#reviews" class="rating-line"><%- include('partials/stars', { value: rating.average, count: rating.count }) %></a><% } %>
+          </div>
           <span class="chip"><%= car.category %></span>
         </div>
         <div class="spec-grid">
@@ -34,6 +37,7 @@
         <h2 class="h3">Rental shop</h2>
         <a href="/shops/<%= shop.id %>" class="shop-link"><strong><%= shop.name %></strong></a>
         <% if (shop.verified) { %><%- include('partials/verified') %><% } %>
+        <% if (shopRating.count) { %><div class="rating-line"><%- include('partials/stars', { value: shopRating.average, count: shopRating.count }) %> <span class="muted small">for this shop</span></div><% } %>
         <% if (shop.description) { %><p class="muted"><%= shop.description %></p><% } %>
         <dl class="info">
           <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>
@@ -41,6 +45,22 @@
           <dt>Email</dt><dd><a href="mailto:<%= shop.email %>"><%= shop.email %></a></dd>
           <% if (shop.opening_hours) { %><dt>Hours</dt><dd><%= shop.opening_hours %></dd><% } %>
         </dl>
+        <% const wa = whatsappLink(shop.whatsapp || shop.phone, `Hello ${shop.name}, I'm interested in the ${car.year} ${car.make} ${car.model} on RentHub.`); if (wa) { %>
+          <a class="btn btn-whatsapp" href="<%= wa %>" target="_blank" rel="noopener"><%- include('partials/wa-icon') %> Chat on WhatsApp</a>
+        <% } %>
+      </div>
+      <div class="card pad" id="reviews">
+        <h2 class="h3">Reviews</h2>
+        <% if (reviews.length) { %>
+          <% reviews.forEach(r => { %>
+            <div class="review">
+              <div><%- include('partials/stars', { value: r.rating }) %> <strong><%= r.customer_name %></strong> <span class="muted small"><%= formatDate(r.created_at.slice(0, 10)) %></span></div>
+              <% if (r.comment) { %><p class="prewrap"><%= r.comment %></p><% } %>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <p class="muted small">No reviews yet. Customers can review the car after their rental.</p>
+        <% } %>
       </div>
     </div>
 

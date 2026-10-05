@@ -6,6 +6,8 @@ const { todayISO, lbpRate } = require('../helpers');
 const email = require('../email');
 const payments = require('../payments');
 const { promoUses } = require('../pricing');
+const scheduler = require('../scheduler');
+const documents = require('../documents');
 
 const router = express.Router();
 
@@ -56,6 +58,36 @@ router.get('/', (req, res) => {
   });
 });
 
+router.post('/reminders/run', async (req, res) => {
+  const s = await scheduler.runOnce();
+  res.flash('success', `Checked now: sent ${s.pickup} pick-up reminder(s), ${s.return} return reminder(s), ${s.review} review request(s). This also runs automatically every 10 minutes.`);
+  res.redirect(303, '/admin/');
+});
+
+router.get('/reviews', (req, res) => {
+  const list = db.prepare(
+    `SELECT reviews.*, cars.make, cars.model, shops.name AS shop_name FROM reviews
+     JOIN cars ON cars.id = reviews.car_id JOIN shops ON shops.id = reviews.shop_id
+     ORDER BY reviews.created_at DESC LIMIT 200`,
+  ).all();
+  res.render('admin/reviews', { reviews: list });
+});
+
+router.post('/reviews/:id/:action', (req, res) => {
+  const hidden = { hide: 1, show: 0 }[req.params.action];
+  if (hidden !== undefined) {
+    db.prepare('UPDATE reviews SET hidden = ? WHERE id = ?').run(hidden, Number(req.params.id));
+    res.flash('success', hidden ? 'Review hidden from the site.' : 'Review visible again.');
+  }
+  res.redirect(303, '/admin/reviews');
+});
+
+router.get('/bookings/:id/documents/:docId', (req, res) => {
+  const doc = db.prepare('SELECT * FROM booking_documents WHERE id = ? AND booking_id = ?').get(Number(req.params.docId), Number(req.params.id));
+  if (!doc) return res.status(404).render('error', { title: 'Not found', message: 'This document does not exist.' });
+  documents.sendDocument(res, doc);
+});
+
 router.get('/shops', (req, res) => {
   const shops = db.prepare(
     `SELECT shops.*,
@@ -97,7 +129,7 @@ router.get('/bookings', (req, res) => {
     `SELECT bookings.*, cars.make, cars.model, cars.year, shops.name AS shop_name FROM bookings
      JOIN cars ON cars.id = bookings.car_id JOIN shops ON shops.id = bookings.shop_id
      WHERE ${where.join(' AND ')} ORDER BY bookings.created_at DESC LIMIT 200`,
-  ).all(...params);
+  ).all(...params).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) }));
   res.render('admin/bookings', { bookings, status, q });
 });
 

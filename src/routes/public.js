@@ -5,13 +5,16 @@ const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy,
 const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
 const { carPhotos } = require('../photos');
+const documents = require('../documents');
+const reviews = require('../reviews');
+const { localToDate: toInstant } = require('../helpers');
 const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult, refundBooking } = require('../payments');
 
 const router = express.Router();
 
 // Cars of suspended shops are never shown or bookable.
 const CAR_WITH_SHOP = `
-  SELECT cars.*, shops.name AS shop_name, shops.city AS shop_city, shops.verified AS shop_verified
+  SELECT cars.*, shops.name AS shop_name, shops.city AS shop_city, shops.verified AS shop_verified, ${reviews.CAR_RATING_COLUMNS}
   FROM cars JOIN shops ON shops.id = cars.shop_id AND shops.suspended = 0`;
 
 function activeCar(id) {
@@ -26,9 +29,12 @@ function cities() {
 function renderCarPage(res, car, { form, error = null, status = 200 }) {
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
   const otherCars = db
-    .prepare('SELECT * FROM cars WHERE shop_id = ? AND id <> ? AND is_active = 1 ORDER BY daily_price LIMIT 3')
+    .prepare(`SELECT cars.*, ${reviews.CAR_RATING_COLUMNS} FROM cars WHERE shop_id = ? AND id <> ? AND is_active = 1 ORDER BY daily_price LIMIT 3`)
     .all(car.shop_id, car.id);
   res.status(status).render('car', {
+    reviews: reviews.carReviews(car.id),
+    rating: reviews.ratingFor('car_id', car.id),
+    shopRating: reviews.ratingFor('shop_id', shop.id),
     car, shop, otherCars, error, form,
     photos: carPhotos(car.id),
     booked: upcomingBookedRanges(car.id, todayISO()),
@@ -223,7 +229,74 @@ router.get('/bookings/:reference', async (req, res) => {
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
   const token = hasManageAccess(booking, req.query.t) ? req.query.t : null;
-  res.render('confirmation', { booking, car, shop, token, policy: cancellationPolicy(booking), extras: bookingExtras(booking.id) });
+  res.render('confirmation', {
+    booking, car, shop, token, policy: cancellationPolicy(booking), extras: bookingExtras(booking.id),
+    documents: token ? documents.bookingDocuments(booking.id) : [], docKinds: documents.KINDS,
+    canUploadDocs: Boolean(token) && booking.status === 'confirmed' && toInstant(booking.return_date, booking.pickup_time) > new Date(),
+    canReview: Boolean(token) && reviews.canReview(booking),
+  });
+});
+
+function reviewAccess(req, res) {
+  const booking = findBooking(req.params.reference);
+  if (!booking) { bookingNotFound(res); return null; }
+  const token = req.method === 'POST' ? req.body.t : req.query.t;
+  if (!hasManageAccess(booking, token)) {
+    res.status(403).render('error', { title: 'Link not valid', message: 'Use the link in your email to review this rental.' });
+    return null;
+  }
+  if (!reviews.canReview(booking)) {
+    const done = db.prepare('SELECT 1 FROM reviews WHERE booking_id = ?').get(booking.id);
+    res.flash('info', done ? 'Thank you, you have already reviewed this rental.' : 'You can leave a review after the rental has ended.');
+    res.redirect(303, manageUrl(booking));
+    return null;
+  }
+  return { booking, token };
+}
+
+function renderReviewForm(res, booking, token, form = {}, error = null) {
+  const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
+  res.status(error ? 400 : 200).render('review-form', { booking, car, shop, token, form, error });
+}
+
+router.get('/bookings/:reference/review', (req, res) => {
+  const access = reviewAccess(req, res);
+  if (access) renderReviewForm(res, access.booking, access.token, { rating: req.query.rating });
+});
+
+router.post('/bookings/:reference/review', (req, res) => {
+  const access = reviewAccess(req, res);
+  if (!access) return;
+  const rating = Number(req.body.rating);
+  const comment = String(req.body.comment || '').trim().slice(0, 1000);
+  if (!(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
+    return renderReviewForm(res, access.booking, access.token, { comment }, 'Please choose a rating from 1 to 5 stars.');
+  }
+  reviews.addReview(access.booking, { rating, comment });
+  res.flash('success', 'Thank you for your review!');
+  res.redirect(303, `/cars/${access.booking.car_id}#reviews`);
+});
+
+// The customer uploads their driving licence / ID from their private booking link.
+router.post('/bookings/:reference/documents', (req, res, next) => {
+  documents.upload.fields([{ name: 'licence', maxCount: 1 }, { name: 'id', maxCount: 1 }])(req, res, (err) => {
+    const booking = findBooking(req.params.reference);
+    if (!booking) return bookingNotFound(res);
+    if (!hasManageAccess(booking, req.body.t)) {
+      for (const list of Object.values(req.files || {})) for (const f of list) require('node:fs').rm(f.path, { force: true }, () => {});
+      return res.status(403).render('error', { title: 'Link not valid', message: 'Use the link in your confirmation email to manage this booking.' });
+    }
+    if (err) {
+      res.flash('error', err.code === 'LIMIT_FILE_SIZE' ? 'That file is too large. Please upload a photo or PDF under 10 MB.' : 'The upload failed. Please try again.');
+      return res.redirect(303, manageUrl(booking));
+    }
+    const saved = booking.status === 'confirmed' ? documents.saveDocuments(booking.id, req.files) : [];
+    res.flash(saved.length ? 'success' : 'error', saved.length
+      ? `Thank you, ${saved.join(' and ')} uploaded. The rental shop can now see ${saved.length === 1 ? 'it' : 'them'}.`
+      : 'Please choose a photo (JPG, PNG, HEIC) or PDF to upload.');
+    res.redirect(303, manageUrl(booking));
+  });
 });
 
 // The customer cancels from their private booking link. Free (fully refunded)
@@ -265,7 +338,9 @@ router.post('/bookings/:reference/cancel', async (req, res) => {
 router.get('/shops', (req, res) => {
   const shops = db
     .prepare(
-      `SELECT shops.*, COUNT(cars.id) AS car_count, MIN(cars.daily_price) AS from_price
+      `SELECT shops.*, COUNT(cars.id) AS car_count, MIN(cars.daily_price) AS from_price,
+         (SELECT ROUND(AVG(rating), 1) FROM reviews r WHERE r.shop_id = shops.id AND r.hidden = 0) AS rating,
+         (SELECT COUNT(*) FROM reviews r WHERE r.shop_id = shops.id AND r.hidden = 0) AS review_count
        FROM shops LEFT JOIN cars ON cars.shop_id = shops.id AND cars.is_active = 1
        WHERE shops.suspended = 0
        GROUP BY shops.id ORDER BY shops.verified DESC, shops.name`,
@@ -277,8 +352,8 @@ router.get('/shops', (req, res) => {
 router.get('/shops/:id', (req, res) => {
   const shop = db.prepare('SELECT * FROM shops WHERE id = ? AND suspended = 0').get(Number(req.params.id));
   if (!shop) return res.status(404).render('error', { title: 'Shop not found', message: 'This rental shop does not exist.' });
-  const cars = db.prepare('SELECT * FROM cars WHERE shop_id = ? AND is_active = 1 ORDER BY daily_price').all(shop.id);
-  res.render('shop-public', { shop, cars });
+  const cars = db.prepare(`SELECT cars.*, ${reviews.CAR_RATING_COLUMNS} FROM cars WHERE shop_id = ? AND is_active = 1 ORDER BY daily_price`).all(shop.id);
+  res.render('shop-public', { shop, cars, reviews: reviews.shopReviews(shop.id), rating: reviews.ratingFor('shop_id', shop.id) });
 });
 
 module.exports = router;

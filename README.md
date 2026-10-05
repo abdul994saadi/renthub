@@ -16,6 +16,12 @@ A car rental marketplace. Rental shops sign up and list their cars; customers br
   free cancellation with a full refund until 24 hours before pick-up, non-refundable after that, not possible once pick-up has passed
 - Confirmation page and confirmation email (sent only once payment succeeds) with reference, dates, amount paid and shop address
 
+- Photo gallery per car, ratings and reviews, availability calendar, optional extras, delivery / airport pick-up, promo codes
+- Approximate LBP prices next to USD
+- Private upload of driving licence and ID before pick-up
+- WhatsApp buttons to contact the shop; optional automatic WhatsApp messages
+- Reminder emails before pick-up and return, and a review request after the rental
+
 **Rental shops** (`/shop`)
 - Register / log in
 - Dashboard with upcoming bookings and booking value
@@ -65,6 +71,26 @@ Apple Pay through APS needs extra setup (Apple Pay must be enabled on your APS a
 
 Without SMTP settings, emails are saved and shown at `/dev/outbox` (the test inbox, disabled when `NODE_ENV=production`).
 To send real emails, set the SMTP variables from `.env.example`. Any SMTP provider works, e.g. Resend, Brevo, SendGrid, Mailgun, or a Gmail/Outlook account with an app password.
+
+## Owner dashboard
+
+Set `ADMIN_PASSWORD` and open `/admin` (username `admin`): overview with commission, shops (verify / suspend),
+all bookings (with driver documents), promo codes, reviews (hide / show), settings (LBP exchange rate) and the email check.
+
+## Reminders
+
+A background job inside the server (every `REMINDER_INTERVAL_MINUTES`, default 10) emails:
+- the customer and the shop about 24 hours before pick-up (not for bookings made less than a day ahead),
+- the customer about 12 hours before the return time,
+- the customer a review request 2 hours after the return time (only for rentals that ended in the last 14 days).
+Each email is sent once. "Send due reminders now" on the dashboard runs the job immediately.
+
+## Automatic WhatsApp messages
+
+Optional. Needs a WhatsApp Business account on Meta (WhatsApp Cloud API): a phone number ID, an access token, and message
+templates approved in WhatsApp Manager. Set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and the template names; the
+confirmation template is sent when a booking is confirmed and the reminder template with the pick-up reminder.
+Without these, the site still shows "Chat on WhatsApp" buttons (free wa.me links).
 
 ## Email check page
 
