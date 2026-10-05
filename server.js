@@ -12,7 +12,7 @@ const payments = require('./src/payments');
 const app = express();
 
 // Short content hash per static file, added to its URL (?v=...) so browsers fetch the new version after each deploy.
-const assetVersions = Object.fromEntries(['css/style.css', 'js/booking.js', 'js/gallery.js'].map((f) => [
+const assetVersions = Object.fromEntries(['css/style.css', 'js/booking.js', 'js/gallery.js', 'js/calendar.js'].map((f) => [
   f, crypto.createHash('sha1').update(require('node:fs').readFileSync(path.join(__dirname, 'public', f))).digest('hex').slice(0, 10),
 ]));
 const asset = (f) => `/${f}?v=${assetVersions[f]}`;

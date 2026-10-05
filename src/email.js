@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const { db } = require('./db');
 const { money, formatDate, formatTime, formatDateTime, FREE_CANCELLATION_HOURS } = require('./helpers');
 const { cancellationPolicy } = require('./bookings');
+const { bookingExtras } = require('./pricing');
 
 // Public address of the site, used for links in emails.
 const SITE_URL = (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
@@ -107,8 +108,12 @@ function bookingTable(booking, car, shop) {
     ${row('Car', `${car.year} ${car.make} ${car.model}`)}
     ${row('Pick-up', `${formatDate(booking.pickup_date)}, ${formatTime(booking.pickup_time)}`)}
     ${row('Return by', `${formatDate(booking.return_date)}, ${formatTime(booking.pickup_time)}`)}
-    ${row('Rental days', booking.days)}
-    ${row('Daily rate', money(booking.daily_price))}
+    ${booking.pickup_method === 'delivery' ? row('Delivery to', booking.delivery_address) : ''}
+    ${booking.pickup_method === 'airport' ? row('Pick-up at', `Beirut airport${booking.flight_number ? `, flight ${booking.flight_number}` : ''}`) : ''}
+    ${row(`${money(booking.daily_price)} × ${booking.days} day${booking.days === 1 ? '' : 's'}`, money(booking.car_total ?? booking.days * booking.daily_price))}
+    ${bookingExtras(booking.id).map((e) => row(e.name, money(e.total))).join('')}
+    ${booking.delivery_fee ? row(booking.pickup_method === 'airport' ? 'Airport pick-up' : 'Delivery', money(booking.delivery_fee)) : ''}
+    ${booking.discount ? row(`Promo code ${booking.promo_code}`, `-${money(booking.discount)}`) : ''}
     ${row(booking.payment_status === 'unpaid' ? 'Total (pay at pick-up)' : 'Total paid online', money(booking.total_price))}
     ${booking.payment_status === 'refunded' ? row('Refunded', money(booking.total_price)) : ''}
     ${car.deposit ? row('Refundable deposit (at pick-up)', money(car.deposit)) : ''}

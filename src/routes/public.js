@@ -1,7 +1,8 @@
 const express = require('express');
 const { db } = require('../db');
 const { CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
-const { isCarAvailable, upcomingBookedRanges, quote, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
+const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
+const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
 const { carPhotos } = require('../photos');
 const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult, refundBooking } = require('../payments');
@@ -31,6 +32,8 @@ function renderCarPage(res, car, { form, error = null, status = 200 }) {
     car, shop, otherCars, error, form,
     photos: carPhotos(car.id),
     booked: upcomingBookedRanges(car.id, todayISO()),
+    extras: shopExtras(shop.id),
+    pickupOptions: pickupOptions(shop),
   });
 }
 
@@ -93,7 +96,20 @@ function readBookingForm(body) {
     phone: String(body.phone || '').trim(),
     notes: String(body.notes || '').trim().slice(0, 500),
     licence: body.licence === 'on' || body.licence === 'yes',
+    extraIds: [].concat(body.extras || []).map(Number).filter(Boolean),
+    pickupMethod: String(body.pickup_method || 'shop'),
+    deliveryAddress: String(body.delivery_address || '').trim().slice(0, 300),
+    flightNumber: String(body.flight_number || '').trim().slice(0, 20),
+    promoCode: String(body.promo_code || '').trim().slice(0, 40),
   };
+}
+
+function quoteFor(car, d) {
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+  return quoteBooking({
+    car, shop, pickup: d.pickup, ret: d.ret,
+    extraIds: d.extraIds, pickupMethod: d.pickupMethod, promoCode: d.promoCode,
+  });
 }
 
 function validateBooking(d, car) {
@@ -105,6 +121,7 @@ function validateBooking(d, car) {
     || (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) && 'Please enter a valid email address.')
     || (d.phone.replace(/\D/g, '').length < 7 && 'Please enter a valid phone number.')
     || (!d.licence && 'Please confirm you hold a valid driving licence.')
+    || (d.pickupMethod === 'delivery' && d.deliveryAddress.length < 5 && 'Please enter the delivery address.')
     || (!isCarAvailable(car.id, d.pickup, d.ret) && 'Sorry, this car is already booked for some of those dates. Please choose other dates.')
     || null
   );
@@ -121,8 +138,10 @@ router.post('/cars/:id/book', (req, res) => {
   const d = readBookingForm(req.body);
   const error = validateBooking(d, car);
   if (error) return renderCarWithError(res, car, d, error);
+  const q = quoteFor(car, d);
+  if (q.promoError) return renderCarWithError(res, car, d, q.promoError);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  res.render('review', { car, shop, d, q: quote(car, d.pickup, d.ret) });
+  res.render('review', { car, shop, d, q, notice: null });
 });
 
 // Step 2: the customer confirmed the summary. Either confirm the booking (pay at
@@ -133,8 +152,15 @@ router.post('/cars/:id/confirm', async (req, res) => {
   const d = readBookingForm(req.body);
   const error = validateBooking(d, car);
   if (error) return renderCarWithError(res, car, d, error);
+  const q = quoteFor(car, d);
+  if (q.promoError) return renderCarWithError(res, car, d, q.promoError);
+  // The price changed since the customer reviewed it (e.g. the shop edited a fee): show it again.
+  if (Math.abs(Number(req.body.expected_total) - q.total) > 0.001) {
+    const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+    return res.render('review', { car, shop, d, q, notice: 'The price was updated. Please check the new total and confirm again.' });
+  }
 
-  const booking = createBooking(car, d, { payAtPickup });
+  const booking = createBooking(car, d, q, { payAtPickup });
   if (!booking) return renderCarWithError(res, car, d, 'Sorry, someone just booked this car for those dates.');
 
   if (payAtPickup) {
@@ -197,7 +223,7 @@ router.get('/bookings/:reference', async (req, res) => {
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
   const token = hasManageAccess(booking, req.query.t) ? req.query.t : null;
-  res.render('confirmation', { booking, car, shop, token, policy: cancellationPolicy(booking) });
+  res.render('confirmation', { booking, car, shop, token, policy: cancellationPolicy(booking), extras: bookingExtras(booking.id) });
 });
 
 // The customer cancels from their private booking link. Free (fully refunded)

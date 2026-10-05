@@ -126,7 +126,7 @@ input, select, textarea {
   min-width: 0; max-width: 100%;
 }
 /* Same height for every single-line field, so rows line up. */
-input:not([type="checkbox"]):not([type="file"]), select { height: 46px; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select { height: 46px; }
 /* iPhone/iPad Safari gives date fields a fixed minimum width and centred text, which made them overflow. */
 input[type="date"] { -webkit-appearance: none; appearance: none; display: block; line-height: 24px; }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
@@ -135,7 +135,7 @@ select { -webkit-appearance: none; appearance: none; padding-right: 36px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
-input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; accent-color: var(--primary); }
+input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; min-height: 0; flex: none; padding: 0; margin: 0; accent-color: var(--primary); }
 input[type="file"] { padding: 8px; }
 label.check { display: flex; align-items: center; gap: 10px; font-weight: 400; }
 .form { display: grid; gap: 16px; }
@@ -192,7 +192,31 @@ legend { font-weight: 600; padding: 0 6px; }
 .info dd { margin: 0; overflow-wrap: anywhere; }
 .booking { display: grid; gap: 14px; }
 .booking h2 { margin: 0; }
-.estimate { margin: -4px 0 0; min-height: 1.2em; font-weight: 600; color: var(--text); }
+.estimate { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; display: grid; gap: 4px; }
+.est-row { display: flex; justify-content: space-between; gap: 12px; }
+.est-total { font-weight: 700; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px; }
+.est-lbp { text-align: right; font-size: 0.8rem; color: var(--muted); }
+.choice-group { grid-template-columns: 1fr; gap: 8px; }
+.choice-group label.check { align-items: flex-start; }
+.choice-group label.check input { margin-top: 2px; }
+[hidden] { display: none !important; }
+.calendar { display: grid; gap: 8px; }
+.cal-nav { display: flex; justify-content: space-between; }
+.cal-nav .btn { min-width: 44px; font-size: 1.2rem; }
+.cal-months { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.cal-title { font-weight: 600; text-align: center; margin-bottom: 6px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 0.75rem; color: var(--muted); padding: 2px 0; }
+.cal-day { aspect-ratio: 1; border: none; border-radius: 8px; font: inherit; font-size: 0.85rem; cursor: pointer; padding: 0; min-height: 34px; }
+.cal-day.free { background: var(--green-soft); color: var(--text); }
+.cal-day.free:hover { outline: 2px solid var(--primary); }
+.cal-day.booked { background: var(--border); color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
+.cal-day.past { background: transparent; color: var(--muted); opacity: 0.45; cursor: default; }
+.cal-day.picked { background: var(--primary); color: #fff; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; }
+.cal-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.cal-key.free { background: var(--green-soft); border: 1px solid var(--green); }
+.cal-key.booked { background: var(--border); } .cal-key.picked { background: var(--primary); }
 .booked ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.875rem; color: var(--muted); }
 
 /* Review & confirmation */
@@ -203,6 +227,7 @@ legend { font-weight: 600; padding: 0 6px; }
 .summary { width: 100%; border-collapse: collapse; margin: 8px 0 20px; }
 .summary td { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .summary td:last-child { text-align: right; font-weight: 600; }
+.summary tr.discount td { color: var(--green); }
 .summary tr.total td { font-size: 1.15rem; font-weight: 700; border-bottom: 2px solid var(--text); }
 .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .actions .btn-big { flex: 1; }
@@ -284,3 +309,4 @@ legend { font-weight: 600; padding: 0 6px; }
   .hero { padding-top: 28px; }
 }
 .right { text-align: right; }
+.promo-code { font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.05em; }

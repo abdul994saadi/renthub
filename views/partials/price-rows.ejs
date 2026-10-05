@@ -1,0 +1,8 @@
+<%# Price breakdown rows. p: { days, dailyPrice, carTotal, extras, pickupMethod, deliveryFee, promoCode, discount, total }, totalLabel %>
+<tr><td><%= money(p.dailyPrice) %> × <%= p.days %> day<%= p.days === 1 ? '' : 's' %></td><td><%= money(p.carTotal) %></td></tr>
+<% (p.extras || []).forEach(e => { %>
+  <tr><td><%= e.name %> <span class="muted small"><%= e.per === 'day' ? `${money(e.price)}/day` : '' %></span></td><td><%= money(e.total) %></td></tr>
+<% }) %>
+<% if (p.deliveryFee) { %><tr><td><%= p.pickupMethod === 'airport' ? 'Airport pick-up' : 'Delivery' %></td><td><%= money(p.deliveryFee) %></td></tr><% } %>
+<% if (p.discount) { %><tr class="discount"><td>Promo code <strong><%= p.promoCode %></strong></td><td>−<%= money(p.discount) %></td></tr><% } %>
+<tr class="total"><td><%= totalLabel %></td><td><%= money(p.total) %><% if (lbp(p.total)) { %><div class="lbp-line">≈ <%= lbp(p.total) %></div><% } %></td></tr>

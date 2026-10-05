@@ -1,6 +1,7 @@
 <%- include('partials/head', { title: 'Review your booking' }) %>
 <div class="wrap narrow section">
   <h1>Review your booking</h1>
+  <% if (notice) { %><div class="alert alert-info"><%= notice %></div><% } %>
   <div class="card pad">
     <div class="review-car">
       <div class="thumb"><%- include('partials/car-image', { car }) %></div>
@@ -13,8 +14,10 @@
     <table class="summary">
       <tr><td>Pick-up</td><td><%= formatDate(d.pickup) %>, <%= formatTime(d.pickupTime) %></td></tr>
       <tr><td>Return by</td><td><%= formatDate(d.ret) %>, <%= formatTime(d.pickupTime) %></td></tr>
-      <tr><td>Daily rate</td><td><%= money(q.dailyPrice) %> × <%= q.days %> day<%= q.days === 1 ? '' : 's' %></td></tr>
-      <tr class="total"><td>Total</td><td><%= money(q.total) %><% if (lbp(q.total)) { %><div class="lbp-line">≈ <%= lbp(q.total) %></div><% } %></td></tr>
+      <tr><td>Pick-up method</td><td><%= q.pickupLabel %></td></tr>
+      <% if (q.pickupMethod === 'delivery') { %><tr><td>Delivery address</td><td><%= d.deliveryAddress %></td></tr><% } %>
+      <% if (q.pickupMethod === 'airport' && d.flightNumber) { %><tr><td>Flight</td><td><%= d.flightNumber %></td></tr><% } %>
+      <%- include('partials/price-rows', { p: q, totalLabel: 'Total' }) %>
       <% if (car.deposit) { %><tr><td>Refundable deposit</td><td><%= money(car.deposit) %> <span class="muted small">at pick-up</span></td></tr><% } %>
     </table>
     <h2 class="h3">Your details</h2>
@@ -28,9 +31,11 @@
 
     <p class="muted small"><strong>Cancellation policy:</strong> free cancellation until <%= FREE_CANCELLATION_HOURS %> hours before pick-up. After that, cancellations are non-refundable.</p>
     <form method="post" action="/cars/<%= car.id %>/confirm" class="actions">
-      <% for (const [k, v] of Object.entries({ pickup: d.pickup, pickup_time: d.pickupTime, return: d.ret, name: d.name, email: d.email, phone: d.phone, notes: d.notes, licence: 'yes' })) { %>
+      <% for (const [k, v] of Object.entries({ pickup: d.pickup, pickup_time: d.pickupTime, return: d.ret, name: d.name, email: d.email, phone: d.phone, notes: d.notes, licence: 'yes',
+           pickup_method: q.pickupMethod, delivery_address: d.deliveryAddress, flight_number: d.flightNumber, promo_code: q.promoCode || '', expected_total: q.total })) { %>
         <input type="hidden" name="<%= k %>" value="<%= v %>">
       <% } %>
+      <% q.extras.forEach(e => { %><input type="hidden" name="extras" value="<%= e.id %>"><% }) %>
       <a class="btn btn-ghost" href="/cars/<%= car.id %>?pickup=<%= d.pickup %>&return=<%= d.ret %>">Change</a>
       <% if (payAtPickup) { %>
       <button class="btn btn-big" type="submit">Confirm booking</button>

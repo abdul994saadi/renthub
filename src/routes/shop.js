@@ -9,6 +9,7 @@ const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO } = require('../helpers');
 const { sendCancellationEmail } = require('../email');
 const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
+const { shopExtras, withExtras } = require('../pricing');
 
 const router = express.Router();
 
@@ -110,7 +111,7 @@ router.get('/', (req, res) => {
        ORDER BY bookings.pickup_date LIMIT 8`,
     )
     .all(shopId, today);
-  res.render('shop/dashboard', { stats, upcoming });
+  res.render('shop/dashboard', { stats, upcoming: withExtras(upcoming) });
 });
 
 // ---------- Cars ----------
@@ -265,7 +266,7 @@ router.get('/bookings', (req, res) => {
        ORDER BY bookings.pickup_date DESC`,
     )
     .all(...[req.shop.id, status].filter(Boolean));
-  res.render('shop/bookings', { bookings, status });
+  res.render('shop/bookings', { bookings: withExtras(bookings), status });
 });
 
 router.post('/bookings/:id/status', async (req, res) => {
@@ -316,6 +317,37 @@ router.get('/payments', (req, res) => {
   res.render('shop/payments', { totals, fee, feePercent: payments.PLATFORM_FEE_PERCENT, recent });
 });
 
+// ---------- Extras ----------
+
+router.get('/extras', (req, res) => {
+  res.render('shop/extras', { extras: shopExtras(req.shop.id, { activeOnly: false }), form: {}, error: null });
+});
+
+router.post('/extras', (req, res) => {
+  const form = {
+    name: String(req.body.name || '').trim().slice(0, 60),
+    price: Number(req.body.price),
+    per: req.body.per === 'booking' ? 'booking' : 'day',
+  };
+  const error = (!form.name && 'Please enter a name, e.g. Child seat.')
+    || (!(form.price >= 0) && 'Please enter a price (0 for free).') || null;
+  if (error) return res.status(400).render('shop/extras', { extras: shopExtras(req.shop.id, { activeOnly: false }), form, error });
+  db.prepare('INSERT INTO extras (shop_id, name, price, per) VALUES (?, ?, ?, ?)').run(req.shop.id, form.name, form.price, form.per);
+  res.flash('success', `${form.name} added. Customers can now choose it when booking.`);
+  res.redirect(303, '/shop/extras');
+});
+
+router.post('/extras/:id/:action', (req, res) => {
+  const extra = db.prepare('SELECT * FROM extras WHERE id = ? AND shop_id = ?').get(Number(req.params.id), req.shop.id);
+  if (extra && req.params.action === 'toggle') {
+    db.prepare('UPDATE extras SET active = ? WHERE id = ?').run(extra.active ? 0 : 1, extra.id);
+  } else if (extra && req.params.action === 'delete') {
+    db.prepare('DELETE FROM extras WHERE id = ?').run(extra.id);
+    res.flash('success', `${extra.name} removed.`);
+  }
+  res.redirect(303, '/shop/extras');
+});
+
 // ---------- Profile ----------
 
 router.get('/profile', (req, res) => res.render('shop/profile', { form: req.shop, error: null }));
@@ -328,11 +360,19 @@ router.post('/profile', (req, res) => {
     address: String(req.body.address || '').trim(),
     opening_hours: String(req.body.opening_hours || '').trim(),
     description: String(req.body.description || '').trim(),
+    whatsapp: String(req.body.whatsapp || '').trim(),
+    // NULL means the option is not offered; 0 means offered for free.
+    delivery_fee: req.body.offer_delivery ? Number(req.body.delivery_fee) || 0 : null,
+    delivery_note: String(req.body.delivery_note || '').trim().slice(0, 200),
+    airport_fee: req.body.offer_airport ? Number(req.body.airport_fee) || 0 : null,
   };
-  const error = (!form.name && 'Please enter your shop name.') || (!form.city && 'Please enter your city.') || null;
+  const error = (!form.name && 'Please enter your shop name.') || (!form.city && 'Please enter your city.')
+    || ((form.delivery_fee < 0 || form.airport_fee < 0) && 'Fees cannot be negative.') || null;
   if (error) return res.status(400).render('shop/profile', { form: { ...req.shop, ...form }, error });
-  db.prepare('UPDATE shops SET name = ?, phone = ?, city = ?, address = ?, opening_hours = ?, description = ? WHERE id = ?')
-    .run(form.name, form.phone, form.city, form.address, form.opening_hours, form.description, req.shop.id);
+  db.prepare(`UPDATE shops SET name = ?, phone = ?, city = ?, address = ?, opening_hours = ?, description = ?,
+      whatsapp = ?, delivery_fee = ?, delivery_note = ?, airport_fee = ? WHERE id = ?`)
+    .run(form.name, form.phone, form.city, form.address, form.opening_hours, form.description,
+      form.whatsapp, form.delivery_fee, form.delivery_note, form.airport_fee, req.shop.id);
   res.flash('success', 'Shop profile saved.');
   res.redirect(303, '/shop/profile');
 });

@@ -7,13 +7,35 @@
     <label>Shop name<input name="name" required value="<%= form.name %>"></label>
     <div class="row-2">
       <label>Phone<input type="tel" name="phone" value="<%= form.phone %>"></label>
-      <label>City<input name="city" required value="<%= form.city %>"></label>
+      <label>WhatsApp number<input type="tel" name="whatsapp" value="<%= form.whatsapp %>" placeholder="e.g. 03 123 456"></label>
     </div>
+    <label>City<input name="city" required value="<%= form.city %>"></label>
     <label>Street address<input name="address" value="<%= form.address %>"></label>
     <label>Opening hours<input name="opening_hours" value="<%= form.opening_hours %>" placeholder="Sat–Thu 8:00–20:00"></label>
     <label>About your shop<textarea name="description" rows="4"><%= form.description %></textarea></label>
+
+    <fieldset class="choice-group">
+      <legend>Delivery and airport pick-up</legend>
+      <p class="muted small" style="margin:0">Offer these to let customers choose where they get the car. The fee is added to their booking.</p>
+      <label class="check"><input type="checkbox" name="offer_delivery" data-toggle="delivery-fields" <%= form.delivery_fee !== null && form.delivery_fee !== undefined ? 'checked' : '' %>> Deliver the car to the customer's address</label>
+      <div class="row-2" data-toggle-target="delivery-fields">
+        <label>Delivery fee (<%= CURRENCY %>)<input type="number" name="delivery_fee" min="0" step="0.01" inputmode="decimal" value="<%= form.delivery_fee ?? '' %>"></label>
+        <label>Delivery areas / note<input name="delivery_note" maxlength="200" value="<%= form.delivery_note || '' %>" placeholder="e.g. Beirut and Metn only"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="offer_airport" data-toggle="airport-fields" <%= form.airport_fee !== null && form.airport_fee !== undefined ? 'checked' : '' %>> Hand over the car at Beirut airport</label>
+      <div class="row-2" data-toggle-target="airport-fields">
+        <label>Airport fee (<%= CURRENCY %>)<input type="number" name="airport_fee" min="0" step="0.01" inputmode="decimal" value="<%= form.airport_fee ?? '' %>"></label>
+      </div>
+    </fieldset>
     <button class="btn btn-big" type="submit">Save profile</button>
     <a class="small" href="/shops/<%= currentShop.id %>">View your public shop page →</a>
   </form>
 </div>
+<script>
+  document.querySelectorAll('[data-toggle]').forEach((box) => {
+    const target = document.querySelector(`[data-toggle-target="${box.dataset.toggle}"]`);
+    const sync = () => { target.hidden = !box.checked; };
+    box.addEventListener('change', sync); sync();
+  });
+</script>
 <%- include('../partials/foot') %>

@@ -25,6 +25,12 @@
       </div>
 
       <div class="card pad">
+        <h2 class="h3">Availability</h2>
+        <div class="calendar" data-calendar data-today="<%= todayISO() %>" data-booked="<%= JSON.stringify(booked.map(b => [b.pickup_date, b.return_date])) %>"></div>
+        <p class="muted small cal-legend"><span class="cal-key free"></span> Available <span class="cal-key booked"></span> Booked <span class="cal-key picked"></span> Your dates · Tap a day to pick dates</p>
+      </div>
+
+      <div class="card pad">
         <h2 class="h3">Rental shop</h2>
         <a href="/shops/<%= shop.id %>" class="shop-link"><strong><%= shop.name %></strong></a>
         <% if (shop.verified) { %><%- include('partials/verified') %><% } %>
@@ -53,20 +59,40 @@
           </label>
           <label>Return date<input type="date" name="return" required min="<%= todayISO() %>" value="<%= form.return %>" data-return></label>
         </div>
-        <p class="estimate muted small" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" data-lbp-rate="<%= CURRENCY === 'USD' ? lbpRate() : 0 %>"></p>
+
+        <% if (pickupOptions.length > 1) { %>
+          <fieldset class="choice-group">
+            <legend>Pick-up</legend>
+            <% pickupOptions.forEach(o => { %>
+              <label class="check"><input type="radio" name="pickup_method" value="<%= o.value %>" data-fee="<%= o.fee %>" <%= (form.pickupMethod || 'shop') === o.value ? 'checked' : '' %>>
+                <span><%= o.label %><% if (o.fee) { %> <span class="muted">+<%= money(o.fee) %></span><% } %></span></label>
+            <% }) %>
+            <label data-show-for="delivery">Delivery address<textarea name="delivery_address" rows="2" maxlength="300" placeholder="Street, building, area"><%= form.deliveryAddress || '' %></textarea>
+              <% if (shop.delivery_note) { %><span class="muted small"><%= shop.delivery_note %></span><% } %></label>
+            <label data-show-for="airport">Flight number (optional)<input name="flight_number" maxlength="20" placeholder="e.g. ME 202" value="<%= form.flightNumber || '' %>"></label>
+          </fieldset>
+        <% } %>
+
+        <% if (extras.length) { %>
+          <fieldset class="choice-group">
+            <legend>Extras</legend>
+            <% extras.forEach(e => { %>
+              <label class="check"><input type="checkbox" name="extras" value="<%= e.id %>" data-price="<%= e.price %>" data-per="<%= e.per %>" <%= (form.extraIds || []).includes(e.id) ? 'checked' : '' %>>
+                <span><%= e.name %> <span class="muted">+<%= money(e.price) %><%= e.per === 'day' ? '/day' : '' %></span></span></label>
+            <% }) %>
+          </fieldset>
+        <% } %>
+
+        <div class="estimate" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" data-lbp-rate="<%= CURRENCY === 'USD' ? lbpRate() : 0 %>" hidden></div>
+
         <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" value="<%= form.email || '' %>"></label>
         <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>"></label>
-        <label>Notes for the shop (optional)<textarea name="notes" rows="2" maxlength="500" placeholder="e.g. child seat, arrival time"><%= form.notes || '' %></textarea></label>
+        <label>Promo code (optional)<input name="promo_code" maxlength="40" autocapitalize="characters" value="<%= form.promoCode || '' %>"></label>
+        <label>Notes for the shop (optional)<textarea name="notes" rows="2" maxlength="500" placeholder="e.g. arrival time, special requests"><%= form.notes || '' %></textarea></label>
         <label class="check"><input type="checkbox" name="licence" required <%= form.licence ? 'checked' : '' %>> I hold a valid driving licence</label>
         <button class="btn btn-big btn-block" type="submit">Continue to review</button>
         <p class="muted small center">Free cancellation up to <%= FREE_CANCELLATION_HOURS %> hours before pick-up.</p>
-        <% if (booked.length) { %>
-          <div class="booked">
-            <span class="muted small">Already booked:</span>
-            <ul><% booked.forEach(b => { %><li><%= formatDate(b.pickup_date) %> – <%= formatDate(b.return_date) %></li><% }) %></ul>
-          </div>
-        <% } %>
       </form>
     </aside>
   </div>
@@ -78,4 +104,5 @@
 </div>
 <script src="<%= asset('js/booking.js') %>"></script>
 <script src="<%= asset('js/gallery.js') %>"></script>
+<script src="<%= asset('js/calendar.js') %>"></script>
 <%- include('partials/foot') %>

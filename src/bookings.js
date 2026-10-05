@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { db, transaction } = require('./db');
-const { daysBetween, localToDate, FREE_CANCELLATION_HOURS } = require('./helpers');
+const { localToDate, FREE_CANCELLATION_HOURS } = require('./helpers');
 
 // How long a car is held while the customer is on the payment page.
 const HOLD_MINUTES = 30;
@@ -19,19 +19,14 @@ function isCarAvailable(carId, pickup, ret, ignoreBookingId = 0) {
   return !clash;
 }
 
-function upcomingBookedRanges(carId, fromDate) {
+function upcomingBookedRanges(carId, fromDate, limit = 100) {
   return db
     .prepare(
       `SELECT pickup_date, return_date FROM bookings
        WHERE car_id = ? AND ${BLOCKING} AND return_date > ?
-       ORDER BY pickup_date LIMIT 20`,
+       ORDER BY pickup_date LIMIT ?`,
     )
-    .all(carId, fromDate);
-}
-
-function quote(car, pickup, ret) {
-  const days = daysBetween(pickup, ret);
-  return { days, dailyPrice: car.daily_price, total: Math.round(days * car.daily_price * 100) / 100 };
+    .all(carId, fromDate, limit);
 }
 
 function newReference() {
@@ -42,25 +37,30 @@ function newReference() {
   return `RH-${ref}`;
 }
 
-// Creates an unpaid booking. With online payment it holds the car while the
+// Creates an unpaid booking from a price quote (see pricing.quoteBooking). With online payment it holds the car while the
 // customer pays (pending_payment); with pay at pick-up it is confirmed at once.
 // Availability is re-checked inside a write transaction so two customers
 // cannot hold the same car for overlapping dates. Returns null if taken.
-function createBooking(car, details, { payAtPickup = false } = {}) {
+function createBooking(car, details, q, { payAtPickup = false } = {}) {
   return transaction(() => {
     if (!isCarAvailable(car.id, details.pickup, details.ret)) return null;
-    const q = quote(car, details.pickup, details.ret);
     const reference = newReference();
-    db.prepare(
+    const { lastInsertRowid } = db.prepare(
       `INSERT INTO bookings (reference, car_id, shop_id, customer_name, customer_email, customer_phone,
-         pickup_date, pickup_time, return_date, days, daily_price, total_price, notes, manage_token, status, hold_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${payAtPickup ? 'NULL' : "datetime('now', ?)"})`,
+         pickup_date, pickup_time, return_date, days, daily_price, car_total, extras_total,
+         pickup_method, delivery_address, flight_number, delivery_fee, promo_code, discount, total_price,
+         notes, manage_token, status, hold_expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${payAtPickup ? 'NULL' : "datetime('now', ?)"})`,
     ).run(
       reference, car.id, car.shop_id, details.name, details.email, details.phone,
-      details.pickup, details.pickupTime, details.ret, q.days, q.dailyPrice, q.total, details.notes,
+      details.pickup, details.pickupTime, details.ret, q.days, q.dailyPrice, q.carTotal, q.extrasTotal,
+      q.pickupMethod, q.pickupMethod === 'delivery' ? details.deliveryAddress : '', q.pickupMethod === 'airport' ? details.flightNumber : '',
+      q.deliveryFee, q.promoCode, q.discount, q.total, details.notes,
       crypto.randomBytes(24).toString('base64url'),
       ...(payAtPickup ? ['confirmed'] : ['pending_payment', `+${HOLD_MINUTES} minutes`]),
     );
+    const insertExtra = db.prepare('INSERT INTO booking_extras (booking_id, extra_id, name, price, per, total) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const e of q.extras) insertExtra.run(lastInsertRowid, e.id, e.name, e.price, e.per, e.total);
     return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);
   });
 }
@@ -115,5 +115,5 @@ function hasManageAccess(booking, token) {
 
 module.exports = {
   cancellationPolicy, hasManageAccess,
-  HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, quote, createBooking, recordPayment, expireBooking,
+  HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, createBooking, recordPayment, expireBooking,
 };

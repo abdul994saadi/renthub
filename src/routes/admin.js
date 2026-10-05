@@ -5,6 +5,7 @@ const { db, getSetting, setSetting } = require('../db');
 const { todayISO, lbpRate } = require('../helpers');
 const email = require('../email');
 const payments = require('../payments');
+const { promoUses } = require('../pricing');
 
 const router = express.Router();
 
@@ -99,6 +100,60 @@ router.get('/bookings', (req, res) => {
   ).all(...params);
   res.render('admin/bookings', { bookings, status, q });
 });
+
+// ---------- Promo codes ----------
+
+function promoPage(res, { form = { kind: 'percent', min_days: 1 }, error = null, status = 200 } = {}) {
+  const promos = db.prepare(
+    `SELECT promo_codes.*, shops.name AS shop_name FROM promo_codes LEFT JOIN shops ON shops.id = promo_codes.shop_id
+     ORDER BY promo_codes.active DESC, promo_codes.created_at DESC`,
+  ).all().map((p) => ({ ...p, uses: promoUses(p.code) }));
+  const shops = db.prepare('SELECT id, name FROM shops ORDER BY name').all();
+  res.status(status).render('admin/promos', { promos, shops, form, error, today: todayISO() });
+}
+
+router.get('/promos', (req, res) => promoPage(res));
+
+router.post('/promos', (req, res) => {
+  const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+  const form = {
+    code: String(req.body.code || '').trim().toUpperCase().replace(/\s+/g, ''),
+    kind: req.body.kind === 'fixed' ? 'fixed' : 'percent',
+    value: Number(req.body.value),
+    shop_id: Number(req.body.shop_id) || null,
+    starts_on: date(req.body.starts_on),
+    ends_on: date(req.body.ends_on),
+    max_uses: Number(req.body.max_uses) || null,
+    min_days: Math.max(1, Number(req.body.min_days) || 1),
+  };
+  const error = (!/^[A-Z0-9_-]{3,30}$/.test(form.code) && 'Codes are 3–30 letters, numbers, - or _.')
+    || (!(form.value > 0) && 'Enter a discount above zero.')
+    || (form.kind === 'percent' && form.value > 100 && 'A percentage cannot be more than 100.')
+    || (form.starts_on && form.ends_on && form.ends_on < form.starts_on && 'The end date is before the start date.')
+    || (db.prepare('SELECT 1 FROM promo_codes WHERE code = ?').get(form.code) && 'That code already exists.')
+    || null;
+  if (error) return promoPage(res, { form, error, status: 400 });
+  db.prepare(
+    `INSERT INTO promo_codes (code, kind, value, shop_id, starts_on, ends_on, max_uses, min_days)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(form.code, form.kind, form.value, form.shop_id, form.starts_on, form.ends_on, form.max_uses, form.min_days);
+  res.flash('success', `Promo code ${form.code} created.`);
+  res.redirect(303, '/admin/promos');
+});
+
+router.post('/promos/:id/:action', (req, res) => {
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE id = ?').get(Number(req.params.id));
+  if (promo && req.params.action === 'toggle') {
+    db.prepare('UPDATE promo_codes SET active = ? WHERE id = ?').run(promo.active ? 0 : 1, promo.id);
+    res.flash('success', `${promo.code} ${promo.active ? 'switched off' : 'switched on'}.`);
+  } else if (promo && req.params.action === 'delete') {
+    db.prepare('DELETE FROM promo_codes WHERE id = ?').run(promo.id);
+    res.flash('success', `${promo.code} deleted. Bookings that used it keep their discount.`);
+  }
+  res.redirect(303, '/admin/promos');
+});
+
+// ---------- Settings ----------
 
 router.get('/settings', (req, res) => {
   res.render('admin/settings', { rate: lbpRate(), error: null });

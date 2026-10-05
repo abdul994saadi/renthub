@@ -1,0 +1,57 @@
+<%- include('../partials/head', { title: 'Promo codes' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <p class="muted">Customers enter a promo code on the booking form. The discount comes off the whole booking (rental, extras and delivery). The customer pays the discounted total, so the shop receives the discounted amount.</p>
+
+  <% if (promos.length) { %>
+    <div class="list">
+      <% promos.forEach(p => { const expired = p.ends_on && p.ends_on < today; %>
+        <div class="card list-item <%= p.active && !expired ? '' : 'inactive' %>">
+          <div>
+            <strong class="promo-code"><%= p.code %></strong>
+            <% if (!p.active) { %><span class="chip chip-red">Off</span><% } else if (expired) { %><span class="chip chip-red">Expired</span><% } else { %><span class="chip chip-green">Active</span><% } %>
+            <div class="small"><%= p.kind === 'percent' ? `${p.value}% off` : `${money(p.value)} off` %> · <%= p.shop_name ? `only at ${p.shop_name}` : 'all shops' %><%= p.min_days > 1 ? ` · min. ${p.min_days} days` : '' %></div>
+            <div class="small muted">Used <%= p.uses %><%= p.max_uses ? ` of ${p.max_uses}` : '' %> times<%= p.starts_on ? ` · from ${formatDate(p.starts_on)}` : '' %><%= p.ends_on ? ` · until ${formatDate(p.ends_on)}` : '' %></div>
+          </div>
+          <div class="booking-actions">
+            <form method="post" action="/admin/promos/<%= p.id %>/toggle"><button class="btn btn-small btn-ghost"><%= p.active ? 'Switch off' : 'Switch on' %></button></form>
+            <form method="post" action="/admin/promos/<%= p.id %>/delete" onsubmit="return confirm('Delete <%= p.code %>?')"><button class="btn btn-small btn-danger">Delete</button></form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="empty card">No promo codes yet.</div>
+  <% } %>
+
+  <form class="card pad form narrow-form" method="post" action="/admin/promos" style="margin-top:16px">
+    <h2>New promo code</h2>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <label>Code<input name="code" required maxlength="30" autocapitalize="characters" placeholder="e.g. SUMMER10" value="<%= form.code || '' %>"></label>
+    <div class="row-2">
+      <label>Discount type
+        <select name="kind">
+          <option value="percent" <%= form.kind !== 'fixed' ? 'selected' : '' %>>Percentage (%)</option>
+          <option value="fixed" <%= form.kind === 'fixed' ? 'selected' : '' %>>Fixed amount (<%= CURRENCY %>)</option>
+        </select>
+      </label>
+      <label>Discount<input type="number" name="value" required min="0.01" step="0.01" inputmode="decimal" value="<%= form.value || '' %>"></label>
+    </div>
+    <label>Valid at
+      <select name="shop_id">
+        <option value="">All shops</option>
+        <% shops.forEach(s => { %><option value="<%= s.id %>" <%= Number(form.shop_id) === s.id ? 'selected' : '' %>><%= s.name %></option><% }) %>
+      </select>
+    </label>
+    <div class="row-2">
+      <label>Starts (optional)<input type="date" name="starts_on" value="<%= form.starts_on || '' %>"></label>
+      <label>Ends (optional)<input type="date" name="ends_on" value="<%= form.ends_on || '' %>"></label>
+    </div>
+    <div class="row-2">
+      <label>Maximum uses (optional)<input type="number" name="max_uses" min="1" inputmode="numeric" value="<%= form.max_uses || '' %>"></label>
+      <label>Minimum rental days<input type="number" name="min_days" min="1" inputmode="numeric" value="<%= form.min_days || 1 %>"></label>
+    </div>
+    <button class="btn" type="submit">Create code</button>
+  </form>
+</div>
+<%- include('../partials/foot') %>

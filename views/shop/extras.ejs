@@ -1,0 +1,39 @@
+<%- include('../partials/head', { title: 'Extras' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <p class="muted">Extras are optional add-ons customers can choose when booking any of your cars, like a child seat, GPS, an additional driver or full insurance. Delivery and airport pick-up are set on your <a href="/shop/profile">profile</a>.</p>
+
+  <% if (extras.length) { %>
+    <div class="list">
+      <% extras.forEach(e => { %>
+        <div class="card list-item <%= e.active ? '' : 'inactive' %>">
+          <div><strong><%= e.name %></strong> <% if (!e.active) { %><span class="chip chip-red">Hidden</span><% } %>
+            <div class="small muted"><%= e.price ? money(e.price) : 'Free' %> <%= e.per === 'day' ? 'per day' : 'per booking' %></div></div>
+          <div class="booking-actions">
+            <form method="post" action="/shop/extras/<%= e.id %>/toggle"><button class="btn btn-small btn-ghost"><%= e.active ? 'Hide' : 'Show' %></button></form>
+            <form method="post" action="/shop/extras/<%= e.id %>/delete" onsubmit="return confirm('Remove this extra?')"><button class="btn btn-small btn-danger">Remove</button></form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="empty card">No extras yet. Add your first one below.</div>
+  <% } %>
+
+  <form class="card pad form narrow-form" method="post" action="/shop/extras" style="margin-top:16px">
+    <h2>Add an extra</h2>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <label>Name<input name="name" required maxlength="60" placeholder="e.g. Child seat" value="<%= form.name || '' %>"></label>
+    <div class="row-2">
+      <label>Price (<%= CURRENCY %>)<input type="number" name="price" required min="0" step="0.01" inputmode="decimal" value="<%= form.price ?? '' %>"></label>
+      <label>Charged
+        <select name="per">
+          <option value="day" <%= form.per !== 'booking' ? 'selected' : '' %>>Per day</option>
+          <option value="booking" <%= form.per === 'booking' ? 'selected' : '' %>>Once per booking</option>
+        </select>
+      </label>
+    </div>
+    <button class="btn" type="submit">Add extra</button>
+  </form>
+</div>
+<%- include('../partials/foot') %>

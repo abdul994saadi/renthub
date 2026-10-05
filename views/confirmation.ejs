@@ -30,11 +30,15 @@
       <tr><td>Car</td><td><%= car.year %> <%= car.make %> <%= car.model %></td></tr>
       <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
       <tr><td>Return by</td><td><%= formatDate(booking.return_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
-      <tr><td>Days</td><td><%= booking.days %></td></tr>
-      <tr class="total"><td><%= paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total (pay at pick-up)' %></td><td><%= money(booking.total_price) %><% if (lbp(booking.total_price)) { %><div class="lbp-line">≈ <%= lbp(booking.total_price) %></div><% } %></td></tr>
+      <% if (booking.pickup_method !== 'shop') { %><tr><td><%= booking.pickup_method === 'airport' ? 'Airport pick-up' : 'Delivery to' %></td><td><%= booking.pickup_method === 'airport' ? ('Beirut airport' + (booking.flight_number ? `, flight ${booking.flight_number}` : '')) : booking.delivery_address %></td></tr><% } %>
+      <%- include('partials/price-rows', { p: {
+            days: booking.days, dailyPrice: booking.daily_price, carTotal: booking.car_total ?? booking.days * booking.daily_price,
+            extras, pickupMethod: booking.pickup_method, deliveryFee: booking.delivery_fee, promoCode: booking.promo_code,
+            discount: booking.discount, total: booking.total_price },
+          totalLabel: paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total (pay at pick-up)' }) %>
       <% if (car.deposit) { %><tr><td>Refundable deposit <span class="muted small">at pick-up</span></td><td><%= money(car.deposit) %></td></tr><% } %>
     </table>
-    <h2 class="h3">Pick up from</h2>
+    <h2 class="h3">Rental shop</h2>
     <p><strong><%= shop.name %></strong><br><%= [shop.address, shop.city].filter(Boolean).join(', ') %>
       <% if (shop.phone) { %><br><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a><% } %>
       <% if (shop.opening_hours) { %><br><span class="muted"><%= shop.opening_hours %></span><% } %></p>
