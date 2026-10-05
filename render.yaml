@@ -15,6 +15,8 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: DATABASE_FILE
         value: /var/data/app.db
       - key: UPLOAD_DIR

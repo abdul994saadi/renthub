@@ -1,0 +1,48 @@
+<%- include('partials/head', { title: 'Email check' }) %>
+<div class="wrap narrow section">
+  <h1>Email check</h1>
+
+  <div class="card pad form">
+    <h2>Connection to the mail server</h2>
+    <% if (check.ok) { %>
+      <div class="alert alert-success">✓ Connected and logged in to <strong><%= settings.host %></strong>. Emails can be sent.</div>
+    <% } else { %>
+      <div class="alert alert-error"><strong>Not working:</strong> <%= check.error %></div>
+    <% } %>
+    <dl class="info">
+      <dt>SMTP_HOST</dt><dd><%= settings.host %></dd>
+      <dt>SMTP_PORT</dt><dd><%= settings.port %></dd>
+      <dt>SMTP_USER</dt><dd><%= settings.user %></dd>
+      <dt>SMTP_PASS</dt><dd><%= settings.passSet ? 'set (hidden)' : '(not set)' %></dd>
+      <dt>MAIL_FROM</dt><dd><%= settings.from %></dd>
+      <dt>APP_URL</dt><dd><%= settings.siteUrl %></dd>
+    </dl>
+  </div>
+
+  <form class="card pad form" method="post" action="/admin/email/test">
+    <h2>Send a test email</h2>
+    <% if (sent) { %>
+      <% if (sent.error && !sent.id) { %><div class="alert alert-error"><%= sent.error %></div>
+      <% } else if (sent.delivered) { %><div class="alert alert-success">✓ Accepted by the mail server for <%= sent.to_address %>. Check the inbox and the Junk folder.</div>
+      <% } else { %><div class="alert alert-error"><strong>Sending failed:</strong> <%= sent.error || 'mail server not configured' %></div><% } %>
+    <% } %>
+    <label>Send to<input type="email" name="to" required placeholder="you@example.com"></label>
+    <button class="btn" type="submit">Send test email</button>
+  </form>
+
+  <h2 class="section-title">Recent emails</h2>
+  <% if (!recent.length) { %><div class="empty card">No emails sent yet.</div><% } %>
+  <div class="list">
+    <% recent.forEach(e => { %>
+      <div class="card list-item">
+        <div>
+          <strong><%= e.subject %></strong>
+          <div class="small muted">To <%= e.to_address %> · <%= e.created_at %> UTC</div>
+          <% if (e.error) { %><div class="small" style="color: var(--red)"><%= e.error %></div><% } %>
+        </div>
+        <span class="chip <%= e.error ? 'chip-red' : e.delivered ? 'chip-green' : '' %>"><%= e.error ? 'Failed' : e.delivered ? 'Sent' : 'Not sent' %></span>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<%- include('partials/foot') %>

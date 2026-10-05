@@ -66,6 +66,12 @@ Apple Pay through APS needs extra setup (Apple Pay must be enabled on your APS a
 Without SMTP settings, emails are saved and shown at `/dev/outbox` (the test inbox, disabled when `NODE_ENV=production`).
 To send real emails, set the SMTP variables from `.env.example`. Any SMTP provider works, e.g. Resend, Brevo, SendGrid, Mailgun, or a Gmail/Outlook account with an app password.
 
+## Email check page
+
+Set `ADMIN_PASSWORD` and open `/admin/email` (username `admin`). It shows whether the app can log in to the
+mail server, lets you send a test email, and lists recent emails with the exact error for any that failed.
+The same login check is written to the logs at startup.
+
 ## Configuration
 
 Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, plus the four `APS_*` credentials unless `PAYMENT_MODE=pickup`.
@@ -82,6 +88,7 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, plus
 | `APS_SHA_TYPE` | `sha256` (default) or `sha512` |
 | `APS_ENVIRONMENT` | `sandbox` (default) or `production` |
 | `PLATFORM_FEE_PERCENT` | RentHub's commission, shown on shops' Payments tab |
+| `ADMIN_PASSWORD` | Enables the `/admin/email` check page |
 | `TIMEZONE` | Shops' time zone for pick-up times (default `Asia/Beirut`) |
 | `FREE_CANCELLATION_HOURS` | Free cancellation window before pick-up (default `24`) |
 | `DATABASE_FILE` | SQLite file path (default `data/app.db`) |

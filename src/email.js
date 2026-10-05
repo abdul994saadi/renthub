@@ -6,18 +6,54 @@ const { cancellationPolicy } = require('./bookings');
 // Public address of the site, used for links in emails.
 const SITE_URL = (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
 
-const smtpConfigured = Boolean(process.env.SMTP_HOST);
+// Settings are trimmed: a stray space pasted into a dashboard field breaks SMTP logins.
+const env = (name) => (process.env[name] || '').trim();
+const smtp = {
+  host: env('SMTP_HOST'),
+  port: Number(env('SMTP_PORT')) || 587,
+  user: env('SMTP_USER'),
+  pass: env('SMTP_PASS'),
+};
+const smtpConfigured = Boolean(smtp.host);
 
 const transport = smtpConfigured
   ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT) === 465,
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.port === 465,
+      auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
+      // Fail within seconds instead of leaving a customer's booking page waiting.
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
     })
   : null;
 
-const FROM = process.env.MAIL_FROM || 'RentHub <no-reply@renthub.local>';
+const FROM = env('MAIL_FROM') || 'RentHub <no-reply@renthub.local>';
+
+// Settings summary for the admin email page (the password is never shown).
+function smtpSummary() {
+  return {
+    configured: smtpConfigured,
+    host: smtp.host || '(not set)',
+    port: smtp.port,
+    user: smtp.user || '(not set)',
+    passSet: Boolean(smtp.pass),
+    from: FROM,
+    siteUrl: SITE_URL,
+  };
+}
+
+// Connects and logs in to the SMTP server without sending anything.
+async function verifySmtp() {
+  if (!transport) return { ok: false, error: 'SMTP_HOST is not set, so no emails are sent.' };
+  try {
+    await transport.verify();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
 
 // Every email is stored in the `emails` table. Without SMTP settings it is only
 // stored, and can be read on the /dev/outbox page.
@@ -150,6 +186,16 @@ async function sendCustomerCancellationEmails(booking, car, shop, { late }) {
   });
 }
 
+async function sendTestEmail(to) {
+  await sendEmail({
+    to,
+    subject: 'RentHub test email',
+    html: layout('Email is working', `<p style="font-size:14px">This test was sent from ${esc(SITE_URL)} at ${esc(new Date().toISOString())}.
+      If you can read this, booking confirmations will reach your customers.</p>`),
+  });
+  return db.prepare('SELECT * FROM emails ORDER BY id DESC LIMIT 1').get();
+}
+
 async function sendCancellationEmail(booking, car, shop) {
   await sendEmail({
     to: booking.customer_email,
@@ -177,4 +223,4 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
+module.exports = { smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };

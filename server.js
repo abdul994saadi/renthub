@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const { db } = require('./src/db');
 const { loadShop } = require('./src/auth');
 const helpers = require('./src/helpers');
-const { smtpConfigured } = require('./src/email');
+const email = require('./src/email');
 const payments = require('./src/payments');
 
 const app = express();
@@ -72,11 +72,35 @@ app.use((req, res, next) => {
 app.use('/', require('./src/routes/public'));
 app.use('/shop', require('./src/routes/shop'));
 
+// Site owner's email check page, protected by ADMIN_PASSWORD (HTTP basic auth, user "admin").
+function requireAdmin(req, res, next) {
+  const password = (process.env.ADMIN_PASSWORD || '').trim();
+  if (!password) return res.status(404).render('error', { title: 'Page not found', message: 'Set ADMIN_PASSWORD to enable this page.' });
+  const [scheme, encoded] = (req.get('authorization') || '').split(' ');
+  const [user, pass] = Buffer.from(encoded || '', 'base64').toString().split(/:(.*)/s);
+  const expected = Buffer.from(`admin:${password}`);
+  const given = Buffer.from(`${user}:${pass}`);
+  if (scheme === 'Basic' && expected.length === given.length && crypto.timingSafeEqual(expected, given)) return next();
+  res.set('WWW-Authenticate', 'Basic realm="RentHub admin"').status(401).send('Login required');
+}
+
+app.get('/admin/email', requireAdmin, async (req, res) => {
+  const recent = db.prepare('SELECT id, to_address, subject, delivered, error, created_at FROM emails ORDER BY id DESC LIMIT 25').all();
+  res.render('admin-email', { settings: email.smtpSummary(), check: await email.verifySmtp(), recent, sent: null });
+});
+
+app.post('/admin/email/test', requireAdmin, async (req, res) => {
+  const to = String(req.body.to || '').trim();
+  const sent = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) ? await email.sendTestEmail(to) : { error: 'Please enter a valid email address.' };
+  const recent = db.prepare('SELECT id, to_address, subject, delivered, error, created_at FROM emails ORDER BY id DESC LIMIT 25').all();
+  res.render('admin-email', { settings: email.smtpSummary(), check: await email.verifySmtp(), recent, sent });
+});
+
 // Test inbox: lets you read the emails the app "sent" before SMTP is set up.
 if (!isProduction) {
   app.get('/dev/outbox', (req, res) => {
     const emails = db.prepare('SELECT id, to_address, subject, delivered, error, created_at FROM emails ORDER BY id DESC LIMIT 100').all();
-    res.render('outbox', { emails, smtpConfigured });
+    res.render('outbox', { emails, smtpConfigured: email.smtpSummary().configured });
   });
   app.get('/dev/outbox/:id', (req, res) => {
     const email = db.prepare('SELECT html FROM emails WHERE id = ?').get(Number(req.params.id));
@@ -117,7 +141,13 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`RentHub running at http://localhost:${PORT}`);
-  console.log(smtpConfigured ? 'Emails are sent through SMTP.'
-    : isProduction ? 'WARNING: SMTP not configured, so no emails will be sent.' : 'SMTP not configured: emails are saved to /dev/outbox.');
+  if (email.smtpSummary().configured) {
+    const { host, port, user } = email.smtpSummary();
+    email.verifySmtp().then((r) => console.log(r.ok
+      ? `Emails are sent through SMTP (${host}:${port} as ${user}): login OK.`
+      : `WARNING: SMTP login to ${host}:${port} as ${user} FAILED: ${r.error}`));
+  } else {
+    console.log(isProduction ? 'WARNING: SMTP not configured, so no emails will be sent.' : 'SMTP not configured: emails are saved to /dev/outbox.');
+  }
   console.log(payments.payAtPickup ? 'Payment mode: pay at pick-up (no online payment).' : payments.demoMode ? 'APS not configured: payments are simulated on /dev/pay.' : `Payments are processed by Amazon Payment Services (${payments.CHECKOUT_URL}).`);
 });
