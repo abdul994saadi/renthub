@@ -108,7 +108,8 @@ a.list-item:hover { text-decoration: none; border-color: var(--primary); }
 /* Hero & search */
 .hero { background: linear-gradient(135deg, var(--primary-soft), var(--bg)); padding: 40px 0 32px; }
 .lead { font-size: 1.1rem; color: var(--muted); margin: 0 0 20px; }
-.search { display: grid; gap: 12px; padding: 16px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: end; }
+.search { display: grid; gap: 12px; padding: 16px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
+.search > *, .filters > * { min-width: 0; }
 
 .steps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .step { padding: 20px; }
@@ -118,11 +119,21 @@ a.list-item:hover { text-decoration: none; border-color: var(--primary); }
 .cta p { margin: 0; }
 
 /* Forms */
-label { display: grid; gap: 6px; font-weight: 500; font-size: 0.9rem; }
+label { display: grid; gap: 6px; font-weight: 500; font-size: 0.9rem; min-width: 0; align-content: start; }
 input, select, textarea {
   font: inherit; font-size: 16px; color: var(--text); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%;
+  min-width: 0; max-width: 100%;
 }
+/* Same height for every single-line field, so rows line up. */
+input:not([type="checkbox"]):not([type="file"]), select { height: 46px; }
+/* iPhone/iPad Safari gives date fields a fixed minimum width and centred text, which made them overflow. */
+input[type="date"] { -webkit-appearance: none; appearance: none; display: block; line-height: 24px; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type="date"]::-webkit-calendar-picker-indicator { margin-left: auto; }
+select { -webkit-appearance: none; appearance: none; padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
 input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; accent-color: var(--primary); }
 input[type="file"] { padding: 8px; }
@@ -203,6 +214,7 @@ legend { font-weight: 600; padding: 0 6px; }
 .cancel-box { text-align: left; border-top: 1px solid var(--border); margin: 20px 0; padding-top: 16px; }
 .cancel-box p { margin: 0 0 12px; }
 .booking-dates { grid-template-columns: 1fr 1fr; }
+.booking-dates > label:last-child { grid-column: 1 / -1; }
 .ref { background: var(--primary-soft); border-radius: 10px; padding: 12px; margin: 16px 0; font-size: 1.1rem; letter-spacing: 0.04em; }
 
 /* Shops */

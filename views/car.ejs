@@ -74,5 +74,5 @@
     <div class="grid"><% otherCars.forEach(c => { %><%- include('partials/car-card', { car: c }) %><% }) %></div>
   <% } %>
 </div>
-<script src="/js/booking.js"></script>
+<script src="<%= asset('js/booking.js') %>"></script>
 <%- include('partials/foot') %>

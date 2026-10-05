@@ -10,6 +10,12 @@ const email = require('./src/email');
 const payments = require('./src/payments');
 
 const app = express();
+
+// Short content hash per static file, added to its URL (?v=...) so browsers fetch the new version after each deploy.
+const assetVersions = Object.fromEntries(['css/style.css', 'js/booking.js'].map((f) => [
+  f, crypto.createHash('sha1').update(require('node:fs').readFileSync(path.join(__dirname, 'public', f))).digest('hex').slice(0, 10),
+]));
+const asset = (f) => `/${f}?v=${assetVersions[f]}`;
 const PORT = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -65,7 +71,7 @@ app.use((req, res, next) => {
 
 app.use(loadShop);
 app.use((req, res, next) => {
-  Object.assign(res.locals, helpers, { path: req.path, showOutbox: !isProduction, demoPayments: payments.demoMode, payAtPickup: payments.payAtPickup });
+  Object.assign(res.locals, helpers, { asset, path: req.path, showOutbox: !isProduction, demoPayments: payments.demoMode, payAtPickup: payments.payAtPickup });
   next();
 });
 
