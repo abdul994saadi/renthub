@@ -89,6 +89,10 @@ addColumn('bookings', 'payment_status', "TEXT NOT NULL DEFAULT 'unpaid'"); // un
 addColumn('bookings', 'hold_expires_at', 'TEXT');
 addColumn('bookings', 'payment_ref', 'TEXT'); // the payment gateway's transaction id (APS fort_id)
 addColumn('bookings', 'paid_at', 'TEXT');
+addColumn('bookings', 'pickup_time', "TEXT NOT NULL DEFAULT '10:00'"); // local time (TIMEZONE), HH:MM
+addColumn('bookings', 'manage_token', 'TEXT'); // secret in the customer's link to view/cancel the booking
+addColumn('bookings', 'cancelled_by', 'TEXT'); // 'shop' | 'customer'
+addColumn('bookings', 'cancelled_at', 'TEXT');
 
 function transaction(fn) {
   db.exec('BEGIN IMMEDIATE');

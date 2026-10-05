@@ -42,8 +42,13 @@
         <div class="price big"><%= money(car.daily_price) %><small>/day</small></div>
         <h2 class="h3">Book this car</h2>
         <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
-        <div class="row-2">
+        <div class="row-3 booking-dates">
           <label>Pick-up date<input type="date" name="pickup" required min="<%= todayISO() %>" value="<%= form.pickup %>" data-pickup></label>
+          <label>Pick-up time
+            <select name="pickup_time" required>
+              <% PICKUP_TIMES.forEach(t => { %><option value="<%= t %>" <%= (form.pickupTime || '10:00') === t ? 'selected' : '' %>><%= formatTime(t) %></option><% }) %>
+            </select>
+          </label>
           <label>Return date<input type="date" name="return" required min="<%= todayISO() %>" value="<%= form.return %>" data-return></label>
         </div>
         <p class="estimate muted small" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>"></p>
@@ -53,6 +58,7 @@
         <label>Notes for the shop (optional)<textarea name="notes" rows="2" maxlength="500" placeholder="e.g. child seat, arrival time"><%= form.notes || '' %></textarea></label>
         <label class="check"><input type="checkbox" name="licence" required <%= form.licence ? 'checked' : '' %>> I hold a valid driving licence</label>
         <button class="btn btn-big btn-block" type="submit">Continue to review</button>
+        <p class="muted small center">Free cancellation up to <%= FREE_CANCELLATION_HOURS %> hours before pick-up.</p>
         <% if (booked.length) { %>
           <div class="booked">
             <span class="muted small">Already booked:</span>

@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { db, transaction } = require('./db');
-const { daysBetween } = require('./helpers');
+const { daysBetween, localToDate, FREE_CANCELLATION_HOURS } = require('./helpers');
 
 // How long a car is held while the customer is on the payment page.
 const HOLD_MINUTES = 30;
@@ -53,11 +53,12 @@ function createBooking(car, details, { payAtPickup = false } = {}) {
     const reference = newReference();
     db.prepare(
       `INSERT INTO bookings (reference, car_id, shop_id, customer_name, customer_email, customer_phone,
-         pickup_date, return_date, days, daily_price, total_price, notes, status, hold_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${payAtPickup ? 'NULL' : "datetime('now', ?)"})`,
+         pickup_date, pickup_time, return_date, days, daily_price, total_price, notes, manage_token, status, hold_expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${payAtPickup ? 'NULL' : "datetime('now', ?)"})`,
     ).run(
       reference, car.id, car.shop_id, details.name, details.email, details.phone,
-      details.pickup, details.ret, q.days, q.dailyPrice, q.total, details.notes,
+      details.pickup, details.pickupTime, details.ret, q.days, q.dailyPrice, q.total, details.notes,
+      crypto.randomBytes(24).toString('base64url'),
       ...(payAtPickup ? ['confirmed'] : ['pending_payment', `+${HOLD_MINUTES} minutes`]),
     );
     return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);
@@ -93,6 +94,26 @@ function expireBooking(bookingId) {
     .run(bookingId);
 }
 
+// What the customer may do with a booking right now.
+//   canCancel   - the booking can still be cancelled by the customer (before pick-up)
+//   refundable  - cancelling now is free: a paid booking is refunded in full
+//   deadline    - last moment for a free cancellation
+function cancellationPolicy(booking, now = new Date()) {
+  const pickupAt = localToDate(booking.pickup_date, booking.pickup_time || '10:00');
+  const deadline = new Date(pickupAt.getTime() - FREE_CANCELLATION_HOURS * 3600 * 1000);
+  const canCancel = booking.status === 'confirmed' && now < pickupAt;
+  return { canCancel, refundable: canCancel && now < deadline, deadline, pickupAt };
+}
+
+// Constant-time check of the secret in the customer's booking link.
+function hasManageAccess(booking, token) {
+  if (!booking?.manage_token || typeof token !== 'string') return false;
+  const a = Buffer.from(booking.manage_token);
+  const b = Buffer.from(token);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 module.exports = {
+  cancellationPolicy, hasManageAccess,
   HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, quote, createBooking, recordPayment, expireBooking,
 };

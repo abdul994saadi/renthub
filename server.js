@@ -100,7 +100,7 @@ if (payments.demoMode) {
     const booking = findPending(req.params.reference);
     if (!booking) return res.status(404).end();
     await payments.handlePaid(booking.id, `demo_${booking.reference}`);
-    res.redirect(303, `/bookings/${booking.reference}`);
+    res.redirect(303, `/bookings/${booking.reference}?t=${booking.manage_token}`);
   });
 }
 

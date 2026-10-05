@@ -15,7 +15,11 @@
     <% } else if (s === 'cancelled') { %>
       <div class="confirm-icon cancelled">✕</div>
       <h1>Booking cancelled</h1>
-      <p class="muted"><%= paid === 'refunded' ? `Your payment of ${money(booking.total_price)} has been refunded to your card. It usually appears within 5–10 business days.` : 'This booking was cancelled.' %></p>
+      <p class="muted">
+        <%= booking.cancelled_by === 'customer' ? 'You cancelled this booking.' : booking.cancelled_by === 'shop' ? 'The rental shop cancelled this booking.' : 'This booking was cancelled.' %>
+        <% if (paid === 'refunded') { %>Your payment of <%= money(booking.total_price) %> has been refunded to your card. It usually appears within 5–10 business days.
+        <% } else if (paid === 'paid') { %>The cancellation was made less than <%= FREE_CANCELLATION_HOURS %> hours before pick-up, so the payment is non-refundable.<% } %>
+      </p>
     <% } else { %>
       <div class="confirm-icon">✓</div>
       <h1>Booking <%= s === 'completed' ? 'completed' : 'confirmed' %>!</h1>
@@ -24,8 +28,8 @@
     <div class="ref">Reference <strong><%= booking.reference %></strong></div>
     <table class="summary">
       <tr><td>Car</td><td><%= car.year %> <%= car.make %> <%= car.model %></td></tr>
-      <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %></td></tr>
-      <tr><td>Return</td><td><%= formatDate(booking.return_date) %></td></tr>
+      <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
+      <tr><td>Return by</td><td><%= formatDate(booking.return_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
       <tr><td>Days</td><td><%= booking.days %></td></tr>
       <tr class="total"><td><%= paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total (pay at pick-up)' %></td><td><%= money(booking.total_price) %></td></tr>
       <% if (car.deposit) { %><tr><td>Refundable deposit <span class="muted small">at pick-up</span></td><td><%= money(car.deposit) %></td></tr><% } %>
@@ -34,7 +38,26 @@
     <p><strong><%= shop.name %></strong><br><%= [shop.address, shop.city].filter(Boolean).join(', ') %>
       <% if (shop.phone) { %><br><a href="tel:<%= shop.phone.replace(/[^\d+]/g, '') %>"><%= shop.phone %></a><% } %>
       <% if (shop.opening_hours) { %><br><span class="muted"><%= shop.opening_hours %></span><% } %></p>
-    <% if (s === 'confirmed') { %><p class="muted small">Bring your driving licence and this reference. Save this page to view your booking later.</p><% } %>
+    <% if (s === 'confirmed') { %><p class="muted small">Bring your driving licence and this reference.</p><% } %>
+    <% if (policy.canCancel) { %>
+      <div class="cancel-box">
+        <h2 class="h3">Cancel booking</h2>
+        <% if (policy.refundable) { %>
+          <p class="small">Free cancellation until <strong><%= formatDateTime(policy.deadline) %></strong><%= paid === 'paid' ? ': you will get a full refund.' : '.' %></p>
+        <% } else { %>
+          <p class="small">The free cancellation period (<%= FREE_CANCELLATION_HOURS %> hours before pick-up) has passed.<%= paid === 'paid' ? ` If you cancel now, your payment of ${money(booking.total_price)} is non-refundable.` : '' %></p>
+        <% } %>
+        <% if (token) { %>
+          <form method="post" action="/bookings/<%= booking.reference %>/cancel"
+                onsubmit="return confirm('<%= policy.refundable ? (paid === 'paid' ? 'Cancel this booking? You will get a full refund.' : 'Cancel this booking?') : (paid === 'paid' ? 'Cancel this booking? Your payment is non-refundable.' : 'Cancel this booking?') %>')">
+            <input type="hidden" name="t" value="<%= token %>">
+            <button class="btn btn-danger" type="submit">Cancel booking</button>
+          </form>
+        <% } else { %>
+          <p class="small muted">To cancel, open the link in your confirmation email.</p>
+        <% } %>
+      </div>
+    <% } %>
     <a class="btn btn-ghost" href="/cars">Browse more cars</a>
   </div>
 </div>

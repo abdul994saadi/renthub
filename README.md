@@ -12,6 +12,8 @@ A car rental marketplace. Rental shops sign up and list their cars; customers br
 - Payment by debit/credit card on the Amazon Payment Services hosted page (card details never touch this server)
 - The car is held for 30 minutes while the customer pays; declined or abandoned payments release it
 - Double bookings are blocked, even if two people book at the same moment
+- Customers choose a pick-up time and get a private link (in their email) to view or cancel the booking:
+  free cancellation with a full refund until 24 hours before pick-up, non-refundable after that, not possible once pick-up has passed
 - Confirmation page and confirmation email (sent only once payment succeeds) with reference, dates, amount paid and shop address
 
 **Rental shops** (`/shop`)
@@ -80,6 +82,8 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, plus
 | `APS_SHA_TYPE` | `sha256` (default) or `sha512` |
 | `APS_ENVIRONMENT` | `sandbox` (default) or `production` |
 | `PLATFORM_FEE_PERCENT` | RentHub's commission, shown on shops' Payments tab |
+| `TIMEZONE` | Shops' time zone for pick-up times (default `Asia/Beirut`) |
+| `FREE_CANCELLATION_HOURS` | Free cancellation window before pick-up (default `24`) |
 | `DATABASE_FILE` | SQLite file path (default `data/app.db`) |
 | `UPLOAD_DIR` | Car photo folder (default `uploads/`) |
 

@@ -1,6 +1,10 @@
 const nodemailer = require('nodemailer');
 const { db } = require('./db');
-const { money, formatDate } = require('./helpers');
+const { money, formatDate, formatTime, formatDateTime, FREE_CANCELLATION_HOURS } = require('./helpers');
+const { cancellationPolicy } = require('./bookings');
+
+// Public address of the site, used for links in emails.
+const SITE_URL = (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
 
 const smtpConfigured = Boolean(process.env.SMTP_HOST);
 
@@ -54,8 +58,8 @@ function bookingTable(booking, car, shop) {
   return `<table style="width:100%;border-collapse:collapse;font-size:14px">
     ${row('Booking reference', booking.reference)}
     ${row('Car', `${car.year} ${car.make} ${car.model}`)}
-    ${row('Pick-up', formatDate(booking.pickup_date))}
-    ${row('Return', formatDate(booking.return_date))}
+    ${row('Pick-up', `${formatDate(booking.pickup_date)}, ${formatTime(booking.pickup_time)}`)}
+    ${row('Return by', `${formatDate(booking.return_date)}, ${formatTime(booking.pickup_time)}`)}
     ${row('Rental days', booking.days)}
     ${row('Daily rate', money(booking.daily_price))}
     ${row(booking.payment_status === 'unpaid' ? 'Total (pay at pick-up)' : 'Total paid online', money(booking.total_price))}
@@ -83,7 +87,8 @@ async function sendBookingEmails(booking, car, shop) {
          ? `Your payment of <strong>${money(booking.total_price)}</strong> was received.`
          : `Please pay <strong>${money(booking.total_price)}</strong> to the shop when you pick up the car.`}
        Bring your driving licence and this reference when you pick up the car.</p>
-       ${bookingTable(booking, car, shop)}`,
+       ${bookingTable(booking, car, shop)}
+       ${manageSection(booking)}`,
     ),
   });
   await sendEmail({
@@ -96,6 +101,50 @@ async function sendBookingEmails(booking, car, shop) {
         : `The customer will pay ${money(booking.total_price)} at pick-up.`}<br>Customer: <strong>${esc(booking.customer_name)}</strong><br>
        Email: ${esc(booking.customer_email)}<br>Phone: ${esc(booking.customer_phone)}
        ${booking.notes ? `<br>Notes: ${esc(booking.notes)}` : ''}</p>
+       ${bookingTable(booking, car, shop)}`,
+    ),
+  });
+}
+
+function button(href, label) {
+  return `<a href="${esc(href)}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">${esc(label)}</a>`;
+}
+
+// Cancellation policy + the customer's private link to view or cancel the booking.
+function manageSection(booking) {
+  if (!booking.manage_token) return '';
+  const { deadline } = cancellationPolicy(booking);
+  return `<h2 style="font-size:16px;margin:20px 0 8px">Need to cancel?</h2>
+  <p style="font-size:14px;margin:0 0 12px">You can cancel free of charge until <strong>${esc(formatDateTime(deadline))}</strong>
+  (${FREE_CANCELLATION_HOURS} hours before pick-up). After that, cancellations are non-refundable.</p>
+  <p style="margin:0">${button(`${SITE_URL}/bookings/${booking.reference}?t=${booking.manage_token}`, 'View or cancel booking')}</p>`;
+}
+
+// Sent when the customer cancels from their booking link.
+async function sendCustomerCancellationEmails(booking, car, shop, { late }) {
+  const paidAndKept = booking.payment_status === 'paid';
+  const refundText = booking.payment_status === 'refunded'
+    ? `A full refund of <strong>${money(booking.total_price)}</strong> has been sent to your card. It usually appears within 5–10 business days.`
+    : paidAndKept
+      ? `Because the booking was cancelled less than ${FREE_CANCELLATION_HOURS} hours before pick-up, your payment of <strong>${money(booking.total_price)}</strong> is non-refundable.`
+      : 'Nothing was charged for this booking.';
+  await sendEmail({
+    to: booking.customer_email,
+    subject: `Booking cancelled: ${booking.reference}`,
+    html: layout(
+      'Your booking has been cancelled',
+      `<p style="font-size:14px">You cancelled the booking below. ${refundText}</p>
+       ${bookingTable(booking, car, shop)}`,
+    ),
+  });
+  await sendEmail({
+    to: shop.email,
+    subject: `Booking ${booking.reference} cancelled by the customer`,
+    html: layout(
+      'A customer cancelled their booking',
+      `<p style="font-size:14px"><strong>${esc(booking.customer_name)}</strong> cancelled the booking below.
+       ${late ? `<br><strong>Late cancellation</strong> (less than ${FREE_CANCELLATION_HOURS} hours before pick-up)${paidAndKept ? ': the payment was kept.' : '.'}` : ''}
+       The car is available again for these dates.</p>
        ${bookingTable(booking, car, shop)}`,
     ),
   });
@@ -128,4 +177,4 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { sendBookingEmails, sendCancellationEmail, sendConflictRefundEmail, smtpConfigured };
+module.exports = { sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };

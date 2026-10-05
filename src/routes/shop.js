@@ -274,7 +274,7 @@ router.post('/bookings/:id/status', async (req, res) => {
     res.flash('error', `The refund could not be processed (${err.message}). The booking was not cancelled.`);
     return res.redirect(303, back);
   }
-  db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(booking.id);
+  db.prepare(`UPDATE bookings SET status = 'cancelled', cancelled_by = 'shop', cancelled_at = datetime('now') WHERE id = ?`).run(booking.id);
   const updated = db.prepare('SELECT * FROM bookings WHERE id = ?').get(booking.id);
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   await sendCancellationEmail(updated, car, req.shop);

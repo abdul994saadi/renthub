@@ -1,9 +1,9 @@
 const express = require('express');
 const { db } = require('../db');
-const { CATEGORIES, TRANSMISSIONS, validateDates, todayISO, isISODate } = require('../helpers');
-const { isCarAvailable, upcomingBookedRanges, quote, createBooking } = require('../bookings');
-const { sendBookingEmails } = require('../email');
-const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult } = require('../payments');
+const { CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
+const { isCarAvailable, upcomingBookedRanges, quote, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
+const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
+const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult, refundBooking } = require('../payments');
 
 const router = express.Router();
 
@@ -71,7 +71,7 @@ router.get('/cars/:id', (req, res) => {
   res.render('car', {
     car, shop, otherCars,
     booked: upcomingBookedRanges(car.id, todayISO()),
-    form: { pickup: req.query.pickup || '', return: req.query.return || '' },
+    form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '' },
     error: null,
   });
 });
@@ -79,6 +79,7 @@ router.get('/cars/:id', (req, res) => {
 function readBookingForm(body) {
   return {
     pickup: String(body.pickup || ''),
+    pickupTime: String(body.pickup_time || ''),
     ret: String(body.return || ''),
     name: String(body.name || '').trim(),
     email: String(body.email || '').trim(),
@@ -91,6 +92,8 @@ function readBookingForm(body) {
 function validateBooking(d, car) {
   return (
     validateDates(d.pickup, d.ret)
+    || (!PICKUP_TIMES.includes(d.pickupTime) && 'Please choose a pick-up time.')
+    || (localToDate(d.pickup, d.pickupTime) <= new Date() && 'That pick-up time has already passed. Please choose a later time.')
     || (!d.name && 'Please enter your full name.')
     || (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) && 'Please enter a valid email address.')
     || (d.phone.replace(/\D/g, '').length < 7 && 'Please enter a valid phone number.')
@@ -134,7 +137,7 @@ router.post('/cars/:id/confirm', async (req, res) => {
   if (payAtPickup) {
     const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
     await sendBookingEmails(booking, car, shop);
-    return res.redirect(303, `/bookings/${booking.reference}`);
+    return res.redirect(303, manageUrl(booking));
   }
 
   const checkout = startCheckout(req, booking, car);
@@ -158,10 +161,13 @@ router.all('/payments/aps/return', async (req, res) => {
   }
   const { booking, paid, message } = result;
   if (!booking) return bookingNotFound(res);
-  if (paid) return res.redirect(303, `/bookings/${booking.reference}`);
+  if (paid) return res.redirect(303, manageUrl(booking));
   res.flash('error', `Payment was not completed${message ? ` (${message})` : ''}. The car was not booked and you were not charged.`);
   res.redirect(303, `/cars/${booking.car_id}?pickup=${booking.pickup_date}&return=${booking.return_date}`);
 });
+
+// The customer's private link to their booking (lets them cancel it).
+const manageUrl = (booking) => `/bookings/${booking.reference}?t=${booking.manage_token}`;
 
 function findBooking(reference) {
   return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);
@@ -176,7 +182,7 @@ router.get('/bookings/:reference/abandon', async (req, res) => {
   if (!booking) return bookingNotFound(res);
   await abandonCheckout(booking);
   const after = findBooking(booking.reference);
-  if (after.payment_status !== 'unpaid') return res.redirect(303, `/bookings/${after.reference}`);
+  if (after.payment_status !== 'unpaid') return res.redirect(303, manageUrl(after));
   res.flash('info', 'Payment cancelled. The car was not booked and you were not charged.');
   res.redirect(303, `/cars/${booking.car_id}?pickup=${booking.pickup_date}&return=${booking.return_date}`);
 });
@@ -187,7 +193,44 @@ router.get('/bookings/:reference', async (req, res) => {
   if (booking.status === 'pending_payment') booking = await syncPendingBooking(booking);
   const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
-  res.render('confirmation', { booking, car, shop });
+  const token = hasManageAccess(booking, req.query.t) ? req.query.t : null;
+  res.render('confirmation', { booking, car, shop, token, policy: cancellationPolicy(booking) });
+});
+
+// The customer cancels from their private booking link. Free (fully refunded)
+// until FREE_CANCELLATION_HOURS before pick-up; after that it is non-refundable.
+router.post('/bookings/:reference/cancel', async (req, res) => {
+  const booking = findBooking(req.params.reference);
+  if (!booking) return bookingNotFound(res);
+  if (!hasManageAccess(booking, req.body.t)) {
+    return res.status(403).render('error', { title: 'Link not valid', message: 'Use the link in your confirmation email to manage this booking.' });
+  }
+  const policy = cancellationPolicy(booking);
+  if (!policy.canCancel) {
+    res.flash('error', 'This booking can no longer be cancelled online. Please contact the rental shop.');
+    return res.redirect(303, manageUrl(booking));
+  }
+  if (policy.refundable) {
+    try {
+      await refundBooking(booking);
+    } catch (err) {
+      console.error(`Refund for ${booking.reference} failed:`, err.message);
+      res.flash('error', 'We could not process the refund, so the booking was not cancelled. Please try again or contact the shop.');
+      return res.redirect(303, manageUrl(booking));
+    }
+  }
+  const { changes } = db.prepare(
+    `UPDATE bookings SET status = 'cancelled', cancelled_by = 'customer', cancelled_at = datetime('now')
+     WHERE id = ? AND status = 'confirmed'`,
+  ).run(booking.id);
+  if (changes) {
+    const updated = findBooking(booking.reference);
+    const car = db.prepare('SELECT * FROM cars WHERE id = ?').get(booking.car_id);
+    const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(booking.shop_id);
+    await sendCustomerCancellationEmails(updated, car, shop, { late: !policy.refundable });
+    res.flash('success', 'Your booking has been cancelled. We have emailed you a confirmation.');
+  }
+  res.redirect(303, manageUrl(booking));
 });
 
 router.get('/shops', (req, res) => {
