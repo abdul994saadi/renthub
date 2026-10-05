@@ -4,7 +4,7 @@
   <div class="card pad shop-hero">
     <div class="avatar big"><%= shop.name.slice(0, 1).toUpperCase() %></div>
     <div>
-      <h1><%= shop.name %></h1>
+      <h1><%= shop.name %> <% if (shop.verified) { %><%- include('partials/verified') %><% } %></h1>
       <% if (shop.description) { %><p class="prewrap"><%= shop.description %></p><% } %>
       <dl class="info">
         <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>

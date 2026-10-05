@@ -7,6 +7,8 @@
 
   const rate = Number(out.dataset.rate);
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: out.dataset.currency });
+  const lbpRate = Number(out.dataset.lbpRate) || 0;
+  const lbp = (usd) => (lbpRate ? ` (≈ LBP ${new Intl.NumberFormat('en-US').format(Math.round((usd * lbpRate) / 1000) * 1000)})` : '');
 
   function update() {
     if (pickup.value) {
@@ -16,7 +18,7 @@
       if (ret.value && ret.value <= pickup.value) ret.value = ret.min;
     }
     const days = pickup.value && ret.value ? Math.round((Date.parse(ret.value) - Date.parse(pickup.value)) / 86400000) : 0;
-    out.textContent = days > 0 ? `${days} day${days === 1 ? '' : 's'} × ${fmt.format(rate)} = ${fmt.format(days * rate)}` : '';
+    out.textContent = days > 0 ? `${days} day${days === 1 ? '' : 's'} × ${fmt.format(rate)} = ${fmt.format(days * rate)}${lbp(days * rate)}` : '';
   }
 
   pickup.addEventListener('change', update);

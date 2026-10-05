@@ -31,7 +31,7 @@
       <tr><td>Pick-up</td><td><%= formatDate(booking.pickup_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
       <tr><td>Return by</td><td><%= formatDate(booking.return_date) %>, <%= formatTime(booking.pickup_time) %></td></tr>
       <tr><td>Days</td><td><%= booking.days %></td></tr>
-      <tr class="total"><td><%= paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total (pay at pick-up)' %></td><td><%= money(booking.total_price) %></td></tr>
+      <tr class="total"><td><%= paid === 'paid' ? 'Total paid' : paid === 'refunded' ? 'Total (refunded)' : 'Total (pay at pick-up)' %></td><td><%= money(booking.total_price) %><% if (lbp(booking.total_price)) { %><div class="lbp-line">≈ <%= lbp(booking.total_price) %></div><% } %></td></tr>
       <% if (car.deposit) { %><tr><td>Refundable deposit <span class="muted small">at pick-up</span></td><td><%= money(car.deposit) %></td></tr><% } %>
     </table>
     <h2 class="h3">Pick up from</h2>

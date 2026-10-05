@@ -6,7 +6,7 @@
       <% shops.forEach(s => { %>
         <a class="card pad shop-card" href="/shops/<%= s.id %>">
           <div class="avatar"><%= s.name.slice(0, 1).toUpperCase() %></div>
-          <h3><%= s.name %></h3>
+          <h3><%= s.name %> <% if (s.verified) { %><%- include('partials/verified') %><% } %></h3>
           <p class="muted small"><%= [s.address, s.city].filter(Boolean).join(', ') %></p>
           <p class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %><%= s.from_price ? ' · from ' + money(s.from_price) + '/day' : '' %></p>
         </a>

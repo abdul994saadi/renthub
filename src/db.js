@@ -94,6 +94,110 @@ addColumn('bookings', 'manage_token', 'TEXT'); // secret in the customer's link 
 addColumn('bookings', 'cancelled_by', 'TEXT'); // 'shop' | 'customer'
 addColumn('bookings', 'cancelled_at', 'TEXT');
 
+// Shops: verification by the site owner, suspension, contact and pick-up options.
+addColumn('shops', 'verified', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('shops', 'suspended', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('shops', 'whatsapp', "TEXT NOT NULL DEFAULT ''");
+addColumn('shops', 'delivery_fee', 'REAL'); // NULL = no delivery offered
+addColumn('shops', 'airport_fee', 'REAL'); // NULL = no airport pick-up offered
+addColumn('shops', 'delivery_note', "TEXT NOT NULL DEFAULT ''");
+
+// Booking price breakdown and options. total_price stays the amount the customer pays.
+addColumn('bookings', 'car_total', 'REAL');
+addColumn('bookings', 'extras_total', 'REAL NOT NULL DEFAULT 0');
+addColumn('bookings', 'pickup_method', "TEXT NOT NULL DEFAULT 'shop'"); // shop | delivery | airport
+addColumn('bookings', 'delivery_address', "TEXT NOT NULL DEFAULT ''");
+addColumn('bookings', 'flight_number', "TEXT NOT NULL DEFAULT ''");
+addColumn('bookings', 'delivery_fee', 'REAL NOT NULL DEFAULT 0');
+addColumn('bookings', 'promo_code', 'TEXT');
+addColumn('bookings', 'discount', 'REAL NOT NULL DEFAULT 0');
+addColumn('bookings', 'pickup_reminder_sent_at', 'TEXT');
+addColumn('bookings', 'return_reminder_sent_at', 'TEXT');
+addColumn('bookings', 'review_requested_at', 'TEXT');
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS car_photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  car_id INTEGER NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_car_photos_car ON car_photos(car_id, position);
+
+-- Site-wide settings changed from the owner dashboard (e.g. the LBP exchange rate).
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+-- Optional extras a shop offers (child seat, GPS...), priced per day or per booking.
+CREATE TABLE IF NOT EXISTS extras (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  price REAL NOT NULL,
+  per TEXT NOT NULL DEFAULT 'day', -- day | booking
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Extras chosen on a booking, copied so later price changes do not alter past bookings.
+CREATE TABLE IF NOT EXISTS booking_extras (
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  extra_id INTEGER,
+  name TEXT NOT NULL,
+  price REAL NOT NULL,
+  per TEXT NOT NULL,
+  total REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  kind TEXT NOT NULL, -- percent | fixed
+  value REAL NOT NULL,
+  shop_id INTEGER REFERENCES shops(id) ON DELETE CASCADE, -- NULL = valid at every shop
+  starts_on TEXT,
+  ends_on TEXT,
+  max_uses INTEGER,
+  min_days INTEGER NOT NULL DEFAULT 1,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  booking_id INTEGER NOT NULL UNIQUE REFERENCES bookings(id) ON DELETE CASCADE,
+  car_id INTEGER NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+  shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL,
+  comment TEXT NOT NULL DEFAULT '',
+  customer_name TEXT NOT NULL,
+  hidden INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_car ON reviews(car_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_shop ON reviews(shop_id);
+
+-- Driving licence / ID photos uploaded by the customer. Stored privately, never publicly served.
+CREATE TABLE IF NOT EXISTS booking_documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL, -- licence | id
+  filename TEXT NOT NULL,
+  mimetype TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
+// Cars created before photo galleries existed: their single image becomes the first photo.
+db.exec(`INSERT INTO car_photos (car_id, filename, position)
+  SELECT id, image, 0 FROM cars WHERE image IS NOT NULL AND id NOT IN (SELECT car_id FROM car_photos)`);
+
+function getSetting(key, fallback = null) {
+  return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;
+}
+function setSetting(key, value) {
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+}
+
 function transaction(fn) {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -106,4 +210,4 @@ function transaction(fn) {
   }
 }
 
-module.exports = { db, transaction };
+module.exports = { db, transaction, getSetting, setSetting };

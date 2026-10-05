@@ -8,6 +8,7 @@ const { hashPassword, verifyPassword, logIn, logOut, requireShop } = require('..
 const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO } = require('../helpers');
 const { sendCancellationEmail } = require('../email');
 const payments = require('../payments');
+const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ const upload = multer({
 function removeUpload(filename) {
   if (filename) fs.rm(path.join(UPLOAD_DIR, path.basename(filename)), { force: true }, () => {});
 }
+const removeUploads = (files = []) => files.forEach((f) => removeUpload(f.filename));
 
 const safeNext = (n) => (typeof n === 'string' && n.startsWith('/shop') && !n.startsWith('//') ? n : '/shop');
 
@@ -68,6 +70,9 @@ router.post('/login', (req, res) => {
   if (!shop || !verifyPassword(String(req.body.password || ''), shop.password_hash)) {
     return res.status(401).render('shop/login', { email, next: safeNext(req.body.next), error: 'Wrong email or password.' });
   }
+  if (shop.suspended) {
+    return res.status(403).render('shop/login', { email, next: '/shop', error: 'This shop account is suspended. Please contact RentHub.' });
+  }
   logIn(res, shop.id);
   res.redirect(303, safeNext(req.body.next));
 });
@@ -78,6 +83,11 @@ router.post('/logout', (req, res) => {
 });
 
 router.use(requireShop);
+router.use((req, res, next) => {
+  if (!req.shop.suspended) return next();
+  logOut(res);
+  res.status(403).render('error', { title: 'Account suspended', message: 'This shop account is suspended. Please contact RentHub.' });
+});
 
 // ---------- Dashboard ----------
 
@@ -155,27 +165,28 @@ function validateCar(c) {
   );
 }
 
-const carFormOptions = { categories: CATEGORIES, transmissions: TRANSMISSIONS, fuels: FUELS };
+const carFormOptions = { categories: CATEGORIES, transmissions: TRANSMISSIONS, fuels: FUELS, maxPhotos: MAX_PHOTOS };
 
 router.get('/cars/new', (req, res) => {
-  res.render('shop/car-form', { ...carFormOptions, car: { doors: 4, seats: 5, mileage_policy: 'Unlimited', features: '' }, error: null });
+  res.render('shop/car-form', { ...carFormOptions, car: { doors: 4, seats: 5, mileage_policy: 'Unlimited', features: '' }, photos: [], error: null });
 });
 
-router.post('/cars', upload.single('image'), (req, res) => {
+router.post('/cars', upload.array('photos', MAX_PHOTOS), (req, res) => {
   const car = readCarForm(req.body);
   const error = validateCar(car);
   if (error) {
-    removeUpload(req.file?.filename);
-    return res.status(400).render('shop/car-form', { ...carFormOptions, car, error });
+    removeUploads(req.files);
+    return res.status(400).render('shop/car-form', { ...carFormOptions, car, photos: [], error });
   }
-  db.prepare(
+  const { lastInsertRowid: carId } = db.prepare(
     `INSERT INTO cars (shop_id, make, model, year, category, transmission, fuel, seats, doors, daily_price, deposit,
-       mileage_policy, features, description, image)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       mileage_policy, features, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     req.shop.id, car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
-    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, req.file?.filename ?? null,
+    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description,
   );
+  updateCarPhotos(Number(carId), { added: (req.files || []).map((f) => f.filename) });
   res.flash('success', `${car.make} ${car.model} is now listed and can be booked.`);
   res.redirect(303, '/shop/cars');
 });
@@ -183,35 +194,37 @@ router.post('/cars', upload.single('image'), (req, res) => {
 router.get('/cars/:id/edit', (req, res) => {
   const car = ownCar(req);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car does not belong to your shop.' });
-  res.render('shop/car-form', { ...carFormOptions, car, error: null });
+  res.render('shop/car-form', { ...carFormOptions, car, photos: carPhotos(car.id), error: null });
 });
 
-router.post('/cars/:id', upload.single('image'), (req, res) => {
+router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), (req, res) => {
   const existing = ownCar(req);
   if (!existing) {
-    removeUpload(req.file?.filename);
+    removeUploads(req.files);
     return res.status(404).render('error', { title: 'Car not found', message: 'This car does not belong to your shop.' });
   }
   const car = { ...readCarForm(req.body), id: existing.id, image: existing.image };
   const error = validateCar(car);
   if (error) {
-    removeUpload(req.file?.filename);
-    return res.status(400).render('shop/car-form', { ...carFormOptions, car, error });
+    removeUploads(req.files);
+    return res.status(400).render('shop/car-form', { ...carFormOptions, car, photos: carPhotos(existing.id), error });
   }
-  let image = existing.image;
-  if (req.file) image = req.file.filename;
-  else if (req.body.remove_image === 'on') image = null;
-  if (image !== existing.image) removeUpload(existing.image);
-
   db.prepare(
     `UPDATE cars SET make = ?, model = ?, year = ?, category = ?, transmission = ?, fuel = ?, seats = ?, doors = ?,
-       daily_price = ?, deposit = ?, mileage_policy = ?, features = ?, description = ?, image = ?
+       daily_price = ?, deposit = ?, mileage_policy = ?, features = ?, description = ?
      WHERE id = ?`,
   ).run(
     car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
-    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, image, existing.id,
+    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, existing.id,
   );
-  res.flash('success', 'Car details saved.');
+  const rejected = updateCarPhotos(existing.id, {
+    added: (req.files || []).map((f) => f.filename),
+    removeIds: [].concat(req.body.remove_photo || []),
+    coverId: req.body.cover_photo || null,
+  });
+  res.flash(rejected.length ? 'error' : 'success', rejected.length
+    ? `Car details saved, but ${rejected.length} photo(s) were not added: a car can have at most ${MAX_PHOTOS} photos.`
+    : 'Car details saved.');
   res.redirect(303, '/shop/cars');
 });
 
@@ -233,8 +246,8 @@ router.post('/cars/:id/delete', (req, res) => {
   if (upcoming) {
     res.flash('error', `This car has ${upcoming} upcoming booking(s). Cancel them first, or hide the car instead.`);
   } else {
+    deleteCarPhotos(car.id);
     db.prepare('DELETE FROM cars WHERE id = ?').run(car.id);
-    removeUpload(car.image);
     res.flash('success', `${car.make} ${car.model} was deleted.`);
   }
   res.redirect(303, '/shop/cars');

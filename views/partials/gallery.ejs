@@ -1,0 +1,19 @@
+<% if (photos.length > 1) { %>
+  <div class="card gallery" data-gallery>
+    <div class="gallery-main">
+      <img src="/uploads/<%= photos[0].filename %>" alt="<%= car.make %> <%= car.model %>" data-gallery-main>
+      <button type="button" class="gallery-nav prev" data-gallery-prev aria-label="Previous photo">‹</button>
+      <button type="button" class="gallery-nav next" data-gallery-next aria-label="Next photo">›</button>
+      <span class="gallery-count" data-gallery-count>1 / <%= photos.length %></span>
+    </div>
+    <div class="gallery-thumbs">
+      <% photos.forEach((p, i) => { %>
+        <button type="button" class="<%= i === 0 ? 'active' : '' %>" data-gallery-thumb="/uploads/<%= p.filename %>" aria-label="Photo <%= i + 1 %>">
+          <img src="/uploads/<%= p.filename %>" alt="" loading="lazy">
+        </button>
+      <% }) %>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card detail-media"><%- include('car-image', { car }) %></div>
+<% } %>

@@ -6,8 +6,8 @@
       <li><%= car.transmission %></li><li><%= car.seats %> seats</li><li><%= car.fuel %></li>
     </ul>
     <div class="car-card-foot">
-      <span class="muted small"><%= car.shop_name ? car.shop_name + (car.shop_city ? ' · ' + car.shop_city : '') : '' %></span>
-      <span class="price"><%= money(car.daily_price) %><small>/day</small></span>
+      <span class="muted small"><%= car.shop_name ? car.shop_name + (car.shop_city ? ' · ' + car.shop_city : '') : '' %><% if (car.shop_verified) { %> <span class="verified-tick" title="Verified shop">✓</span><% } %></span>
+      <span class="price"><%= money(car.daily_price) %><small>/day</small><% if (lbp(car.daily_price)) { %><span class="lbp-line"><%= lbp(car.daily_price) %></span><% } %></span>
     </div>
   </div>
 </a>

@@ -14,7 +14,7 @@
       <tr><td>Pick-up</td><td><%= formatDate(d.pickup) %>, <%= formatTime(d.pickupTime) %></td></tr>
       <tr><td>Return by</td><td><%= formatDate(d.ret) %>, <%= formatTime(d.pickupTime) %></td></tr>
       <tr><td>Daily rate</td><td><%= money(q.dailyPrice) %> × <%= q.days %> day<%= q.days === 1 ? '' : 's' %></td></tr>
-      <tr class="total"><td>Total</td><td><%= money(q.total) %></td></tr>
+      <tr class="total"><td>Total</td><td><%= money(q.total) %><% if (lbp(q.total)) { %><div class="lbp-line">≈ <%= lbp(q.total) %></div><% } %></td></tr>
       <% if (car.deposit) { %><tr><td>Refundable deposit</td><td><%= money(car.deposit) %> <span class="muted small">at pick-up</span></td></tr><% } %>
     </table>
     <h2 class="h3">Your details</h2>

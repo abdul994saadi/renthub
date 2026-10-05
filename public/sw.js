@@ -1,7 +1,7 @@
 // Minimal service worker so the site can be installed as an app.
 // Pages always come from the network so cars and bookings stay current.
 const CACHE = 'renthub-v2';
-const ASSETS = ['/css/style.css', '/js/booking.js', '/icon.svg'];
+const ASSETS = ['/css/style.css', '/js/booking.js', '/js/gallery.js', '/icon.svg'];
 
 self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))));
 self.addEventListener('activate', (e) =>

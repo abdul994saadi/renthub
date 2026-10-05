@@ -1,4 +1,5 @@
 const path = require('node:path');
+const { getSetting } = require('./db');
 
 const CURRENCY = process.env.CURRENCY || 'USD';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
@@ -19,6 +20,25 @@ const FUELS = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
 
 function money(amount) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: CURRENCY, maximumFractionDigits: 2 }).format(amount);
+}
+
+// Lebanese pound equivalent of a USD amount, using the rate set on the owner dashboard
+// (falls back to LBP_RATE). Rounded to the nearest 1,000 LBP. Empty when no rate is set.
+function lbpRate() {
+  return Number(getSetting('lbp_rate', process.env.LBP_RATE || 89500)) || 0;
+}
+function lbp(usd) {
+  const rate = lbpRate();
+  if (!rate || CURRENCY !== 'USD') return '';
+  return `LBP ${new Intl.NumberFormat('en-US').format(Math.round((usd * rate) / 1000) * 1000)}`;
+}
+
+// wa.me link for a phone number. Local Lebanese numbers (03 123 456, 71 123 456) get the +961 prefix.
+function whatsappLink(phone, text = '') {
+  let digits = String(phone || '').replace(/\D/g, '').replace(/^00/, '');
+  if (!digits) return '';
+  if (digits.length <= 8) digits = `961${digits.replace(/^0/, '')}`;
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 }
 
 function formatDate(iso) {
@@ -82,5 +102,5 @@ function carFeatures(car) {
 
 module.exports = {
   CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
-  money, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
+  money, lbp, lbpRate, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };

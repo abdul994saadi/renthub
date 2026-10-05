@@ -3,26 +3,42 @@ const { db } = require('../db');
 const { CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
 const { isCarAvailable, upcomingBookedRanges, quote, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
+const { carPhotos } = require('../photos');
 const { payAtPickup, startCheckout, syncPendingBooking, abandonCheckout, handleApsResult, refundBooking } = require('../payments');
 
 const router = express.Router();
 
+// Cars of suspended shops are never shown or bookable.
 const CAR_WITH_SHOP = `
-  SELECT cars.*, shops.name AS shop_name, shops.city AS shop_city
-  FROM cars JOIN shops ON shops.id = cars.shop_id`;
+  SELECT cars.*, shops.name AS shop_name, shops.city AS shop_city, shops.verified AS shop_verified
+  FROM cars JOIN shops ON shops.id = cars.shop_id AND shops.suspended = 0`;
 
 function activeCar(id) {
   return db.prepare(`${CAR_WITH_SHOP} WHERE cars.id = ? AND cars.is_active = 1`).get(Number(id));
 }
 
 function cities() {
-  return db.prepare(`SELECT DISTINCT city FROM shops WHERE city <> '' ORDER BY city`).all().map((r) => r.city);
+  return db.prepare(`SELECT DISTINCT city FROM shops WHERE city <> '' AND suspended = 0 ORDER BY city`).all().map((r) => r.city);
+}
+
+// Everything the car page shows, in one place (the booking form re-renders it on errors).
+function renderCarPage(res, car, { form, error = null, status = 200 }) {
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+  const otherCars = db
+    .prepare('SELECT * FROM cars WHERE shop_id = ? AND id <> ? AND is_active = 1 ORDER BY daily_price LIMIT 3')
+    .all(car.shop_id, car.id);
+  res.status(status).render('car', {
+    car, shop, otherCars, error, form,
+    photos: carPhotos(car.id),
+    booked: upcomingBookedRanges(car.id, todayISO()),
+  });
 }
 
 router.get('/', (req, res) => {
   const featured = db.prepare(`${CAR_WITH_SHOP} WHERE cars.is_active = 1 ORDER BY cars.created_at DESC LIMIT 6`).all();
   const stats = db
-    .prepare(`SELECT (SELECT COUNT(*) FROM cars WHERE is_active = 1) AS cars, (SELECT COUNT(*) FROM shops) AS shops`)
+    .prepare(`SELECT (SELECT COUNT(*) FROM cars JOIN shops ON shops.id = cars.shop_id AND shops.suspended = 0 WHERE cars.is_active = 1) AS cars,
+                     (SELECT COUNT(*) FROM shops WHERE suspended = 0) AS shops`)
     .get();
   res.render('home', { featured, stats, cities: cities(), categories: CATEGORIES });
 });
@@ -64,16 +80,7 @@ router.get('/cars', (req, res) => {
 router.get('/cars/:id', (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
-  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  const otherCars = db
-    .prepare('SELECT * FROM cars WHERE shop_id = ? AND id <> ? AND is_active = 1 ORDER BY daily_price LIMIT 3')
-    .all(car.shop_id, car.id);
-  res.render('car', {
-    car, shop, otherCars,
-    booked: upcomingBookedRanges(car.id, todayISO()),
-    form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '' },
-    error: null,
-  });
+  renderCarPage(res, car, { form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '' } });
 });
 
 function readBookingForm(body) {
@@ -104,11 +111,7 @@ function validateBooking(d, car) {
 }
 
 function renderCarWithError(res, car, d, error) {
-  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  res.status(400).render('car', {
-    car, shop, otherCars: [], booked: upcomingBookedRanges(car.id, todayISO()),
-    form: { ...d, return: d.ret }, error,
-  });
+  renderCarPage(res, car, { form: { ...d, return: d.ret }, error, status: 400 });
 }
 
 // Step 1: check the details and show a summary to review.
@@ -238,14 +241,15 @@ router.get('/shops', (req, res) => {
     .prepare(
       `SELECT shops.*, COUNT(cars.id) AS car_count, MIN(cars.daily_price) AS from_price
        FROM shops LEFT JOIN cars ON cars.shop_id = shops.id AND cars.is_active = 1
-       GROUP BY shops.id ORDER BY shops.name`,
+       WHERE shops.suspended = 0
+       GROUP BY shops.id ORDER BY shops.verified DESC, shops.name`,
     )
     .all();
   res.render('shops', { shops });
 });
 
 router.get('/shops/:id', (req, res) => {
-  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(Number(req.params.id));
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ? AND suspended = 0').get(Number(req.params.id));
   if (!shop) return res.status(404).render('error', { title: 'Shop not found', message: 'This rental shop does not exist.' });
   const cars = db.prepare('SELECT * FROM cars WHERE shop_id = ? AND is_active = 1 ORDER BY daily_price').all(shop.id);
   res.render('shop-public', { shop, cars });

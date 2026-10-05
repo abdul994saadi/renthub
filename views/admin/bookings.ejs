@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title: 'All bookings' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <form class="filters card" method="get" action="/admin/bookings">
+    <label class="span-2">Search<input type="search" name="q" value="<%= q %>" placeholder="Reference, customer or shop"></label>
+    <label>Status
+      <select name="status">
+        <option value="">All</option>
+        <% ['confirmed', 'completed', 'cancelled'].forEach(s => { %><option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s %></option><% }) %>
+      </select>
+    </label>
+    <div class="filter-actions"><button class="btn" type="submit">Filter</button></div>
+  </form>
+  <p class="muted"><%= bookings.length %> booking<%= bookings.length === 1 ? '' : 's' %><%= bookings.length === 200 ? ' (latest 200)' : '' %></p>
+  <% if (!bookings.length) { %><div class="empty card">No bookings found.</div><% } %>
+  <%- include('bookings-table', { bookings }) %>
+</div>
+<%- include('../partials/foot') %>

@@ -1,6 +1,7 @@
 <%- include('partials/head', { title: 'Email check' }) %>
-<div class="wrap narrow section">
-  <h1>Email check</h1>
+<div class="wrap section">
+  <%- include('partials/admin-nav') %>
+  <div class="narrow-form">
 
   <div class="card pad form">
     <h2>Connection to the mail server</h2>
@@ -19,7 +20,7 @@
     </dl>
   </div>
 
-  <form class="card pad form" method="post" action="/admin/email/test">
+  <form class="card pad form" method="post" action="/admin/email/test" style="margin-top:16px">
     <h2>Send a test email</h2>
     <% if (sent) { %>
       <% if (sent.error && !sent.id) { %><div class="alert alert-error"><%= sent.error %></div>
@@ -43,6 +44,7 @@
         <span class="chip <%= e.error ? 'chip-red' : e.delivered ? 'chip-green' : '' %>"><%= e.error ? 'Failed' : e.delivered ? 'Sent' : 'Not sent' %></span>
       </div>
     <% }) %>
+  </div>
   </div>
 </div>
 <%- include('partials/foot') %>

@@ -1,0 +1,12 @@
+<%- include('../partials/head', { title: 'Settings' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/admin/settings">
+    <h2>Lebanese pound prices</h2>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <p class="muted small">Prices are set and charged in USD. The site also shows an approximate LBP amount using this rate, rounded to the nearest 1,000 LBP. Update it when the market rate changes. Enter 0 to hide LBP prices.</p>
+    <label>LBP for 1 USD<input name="lbp_rate" inputmode="numeric" value="<%= rate %>" required></label>
+    <button class="btn" type="submit">Save rate</button>
+  </form>
+</div>
+<%- include('../partials/foot') %>

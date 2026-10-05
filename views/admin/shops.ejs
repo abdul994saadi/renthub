@@ -1,0 +1,26 @@
+<%- include('../partials/head', { title: 'Shops' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <p class="muted">Verify a shop after checking its documents (commercial registration, ID). Verified shops get a badge and appear first. Suspending a shop hides its cars and blocks its login; its existing bookings stay.</p>
+  <% if (!shops.length) { %><div class="empty card">No shops yet.</div><% } %>
+  <div class="list">
+    <% shops.forEach(s => { %>
+      <div class="card list-item booking-item <%= s.suspended ? 'inactive' : '' %>">
+        <div class="booking-main">
+          <div><strong><a href="/shops/<%= s.id %>"><%= s.name %></a></strong>
+            <% if (s.verified) { %><%- include('../partials/verified') %><% } %>
+            <% if (s.suspended) { %><span class="chip chip-red">Suspended</span><% } %></div>
+          <div class="small muted"><%= [s.address, s.city].filter(Boolean).join(', ') %> · <%= s.email %> · <%= s.phone || 'no phone' %> · joined <%= s.created_at.slice(0, 10) %></div>
+          <div class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %> · <%= s.booking_count %> booking<%= s.booking_count === 1 ? '' : 's' %> worth <strong><%= money(s.booking_value) %></strong><% if (feePercent) { %> · commission <strong><%= money(s.commission) %></strong><% } %></div>
+        </div>
+        <div class="booking-actions">
+          <form method="post" action="/admin/shops/<%= s.id %>/<%= s.verified ? 'unverify' : 'verify' %>"><button class="btn btn-small <%= s.verified ? 'btn-ghost' : '' %>"><%= s.verified ? 'Remove badge' : 'Verify' %></button></form>
+          <form method="post" action="/admin/shops/<%= s.id %>/<%= s.suspended ? 'unsuspend' : 'suspend' %>" <% if (!s.suspended) { %>onsubmit="return confirm('Suspend <%= s.name.replace(/['\\]/g, '') %>? Its cars will be hidden and it will not be able to log in.')"<% } %>>
+            <button class="btn btn-small <%= s.suspended ? 'btn-outline' : 'btn-danger' %>"><%= s.suspended ? 'Reactivate' : 'Suspend' %></button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

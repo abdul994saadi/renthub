@@ -12,7 +12,7 @@ const payments = require('./src/payments');
 const app = express();
 
 // Short content hash per static file, added to its URL (?v=...) so browsers fetch the new version after each deploy.
-const assetVersions = Object.fromEntries(['css/style.css', 'js/booking.js'].map((f) => [
+const assetVersions = Object.fromEntries(['css/style.css', 'js/booking.js', 'js/gallery.js'].map((f) => [
   f, crypto.createHash('sha1').update(require('node:fs').readFileSync(path.join(__dirname, 'public', f))).digest('hex').slice(0, 10),
 ]));
 const asset = (f) => `/${f}?v=${assetVersions[f]}`;
@@ -78,29 +78,7 @@ app.use((req, res, next) => {
 app.use('/', require('./src/routes/public'));
 app.use('/shop', require('./src/routes/shop'));
 
-// Site owner's email check page, protected by ADMIN_PASSWORD (HTTP basic auth, user "admin").
-function requireAdmin(req, res, next) {
-  const password = (process.env.ADMIN_PASSWORD || '').trim();
-  if (!password) return res.status(404).render('error', { title: 'Page not found', message: 'Set ADMIN_PASSWORD to enable this page.' });
-  const [scheme, encoded] = (req.get('authorization') || '').split(' ');
-  const [user, pass] = Buffer.from(encoded || '', 'base64').toString().split(/:(.*)/s);
-  const expected = Buffer.from(`admin:${password}`);
-  const given = Buffer.from(`${user}:${pass}`);
-  if (scheme === 'Basic' && expected.length === given.length && crypto.timingSafeEqual(expected, given)) return next();
-  res.set('WWW-Authenticate', 'Basic realm="RentHub admin"').status(401).send('Login required');
-}
-
-app.get('/admin/email', requireAdmin, async (req, res) => {
-  const recent = db.prepare('SELECT id, to_address, subject, delivered, error, created_at FROM emails ORDER BY id DESC LIMIT 25').all();
-  res.render('admin-email', { settings: email.smtpSummary(), check: await email.verifySmtp(), recent, sent: null });
-});
-
-app.post('/admin/email/test', requireAdmin, async (req, res) => {
-  const to = String(req.body.to || '').trim();
-  const sent = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) ? await email.sendTestEmail(to) : { error: 'Please enter a valid email address.' };
-  const recent = db.prepare('SELECT id, to_address, subject, delivered, error, created_at FROM emails ORDER BY id DESC LIMIT 25').all();
-  res.render('admin-email', { settings: email.smtpSummary(), check: await email.verifySmtp(), recent, sent });
-});
+app.use('/admin', require('./src/routes/admin').router);
 
 // Test inbox: lets you read the emails the app "sent" before SMTP is set up.
 if (!isProduction) {

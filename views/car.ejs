@@ -3,7 +3,7 @@
   <a href="/cars" class="back">← All cars</a>
   <div class="detail">
     <div class="detail-main">
-      <div class="card detail-media"><%- include('partials/car-image', { car }) %></div>
+      <%- include('partials/gallery', { car, photos }) %>
       <div class="card pad">
         <div class="title-row">
           <h1><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h1>
@@ -27,6 +27,7 @@
       <div class="card pad">
         <h2 class="h3">Rental shop</h2>
         <a href="/shops/<%= shop.id %>" class="shop-link"><strong><%= shop.name %></strong></a>
+        <% if (shop.verified) { %><%- include('partials/verified') %><% } %>
         <% if (shop.description) { %><p class="muted"><%= shop.description %></p><% } %>
         <dl class="info">
           <dt>Address</dt><dd><%= [shop.address, shop.city].filter(Boolean).join(', ') || '—' %></dd>
@@ -40,6 +41,7 @@
     <aside class="detail-side">
       <form class="card pad booking" method="post" action="/cars/<%= car.id %>/book" id="book">
         <div class="price big"><%= money(car.daily_price) %><small>/day</small></div>
+        <% if (lbp(car.daily_price)) { %><div class="muted small lbp">≈ <%= lbp(car.daily_price) %>/day</div><% } %>
         <h2 class="h3">Book this car</h2>
         <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
         <div class="row-3 booking-dates">
@@ -51,7 +53,7 @@
           </label>
           <label>Return date<input type="date" name="return" required min="<%= todayISO() %>" value="<%= form.return %>" data-return></label>
         </div>
-        <p class="estimate muted small" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>"></p>
+        <p class="estimate muted small" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" data-lbp-rate="<%= CURRENCY === 'USD' ? lbpRate() : 0 %>"></p>
         <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" value="<%= form.email || '' %>"></label>
         <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>"></label>
@@ -75,4 +77,5 @@
   <% } %>
 </div>
 <script src="<%= asset('js/booking.js') %>"></script>
+<script src="<%= asset('js/gallery.js') %>"></script>
 <%- include('partials/foot') %>

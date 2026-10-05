@@ -6,12 +6,24 @@
   <form class="card pad form" method="post" action="<%= editing ? `/shop/cars/${car.id}` : '/shop/cars' %>" enctype="multipart/form-data">
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
-    <label>Photo
-      <% if (car.image) { %><div class="thumb wide"><%- include('../partials/car-image', { car }) %></div><% } %>
-      <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/heic">
-      <span class="muted small"><%= car.image ? 'Choose a new photo to replace this one.' : 'JPG, PNG or WebP, up to 8 MB. You can take a photo with your camera.' %></span>
-    </label>
-    <% if (car.image) { %><label class="check"><input type="checkbox" name="remove_image"> Remove current photo</label><% } %>
+    <fieldset class="photo-field">
+      <legend>Photos (up to <%= maxPhotos %>)</legend>
+      <% if (photos.length) { %>
+        <div class="photo-grid">
+          <% photos.forEach((p, i) => { %>
+            <div class="photo-tile">
+              <img src="/uploads/<%= p.filename %>" alt="Photo <%= i + 1 %>" loading="lazy">
+              <label class="check small"><input type="radio" name="cover_photo" value="<%= p.id %>" <%= i === 0 ? 'checked' : '' %>> Cover</label>
+              <label class="check small"><input type="checkbox" name="remove_photo" value="<%= p.id %>"> Remove</label>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <label><%= photos.length ? 'Add more photos' : 'Add photos' %>
+        <input type="file" name="photos" multiple accept="image/jpeg,image/png,image/webp,image/heic">
+        <span class="muted small">JPG, PNG or WebP, up to 8 MB each. Select several at once. The cover photo is shown first in search results.</span>
+      </label>
+    </fieldset>
 
     <div class="row-3">
       <label>Make<input name="make" required placeholder="Toyota" value="<%= car.make || '' %>"></label>
