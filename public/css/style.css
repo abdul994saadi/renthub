@@ -13,6 +13,9 @@
   --red-soft: #fdecec;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
+  --hero-blob-1: #bfd3ff;
+  --hero-blob-2: #c7f0e4;
+  --hero-highlight: #ffe08a;
   color-scheme: light;
 }
 
@@ -31,6 +34,9 @@
     --red: #f87171;
     --red-soft: #2e1717;
     --shadow: none;
+    --hero-blob-1: #1d3266;
+    --hero-blob-2: #123b33;
+    --hero-highlight: rgb(255 214 102 / 0.28);
     color-scheme: dark;
   }
 }
@@ -106,7 +112,15 @@ img, svg { max-width: 100%; display: block; }
 a.list-item:hover { text-decoration: none; border-color: var(--primary); }
 
 /* Hero & search */
-.hero { background: linear-gradient(135deg, var(--primary-soft), var(--bg)); padding: 40px 0 32px; }
+@font-face { font-family: "Outfit"; src: url("/fonts/outfit-800.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+.hero { position: relative; overflow: hidden; background: var(--surface); padding: 66px 0 50px; }
+.hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; pointer-events: none; }
+.hero::before { width: 520px; height: 520px; background: var(--hero-blob-1); top: -220px; right: -120px; }
+.hero::after { width: 420px; height: 420px; background: var(--hero-blob-2); bottom: -260px; left: -140px; }
+.hero .wrap { position: relative; z-index: 1; }
+.hero h1 { font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 800; font-size: clamp(2.2rem, 5.4vw, 3.8rem); letter-spacing: -0.03em; line-height: 1.05; max-width: 14ch; margin-bottom: 16px; }
+.hero h1 .hl { color: var(--primary); background: linear-gradient(transparent 68%, var(--hero-highlight) 68%, var(--hero-highlight) 92%, transparent 92%); }
+.hero .lead { font-size: 1.2rem; }
 .lead { font-size: 1.1rem; color: var(--muted); margin: 0 0 20px; }
 .search { display: grid; gap: 12px; padding: 16px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
 .search > *, .filters > * { min-width: 0; }
@@ -308,7 +322,7 @@ legend { font-weight: 600; padding: 0 6px; }
   .car-row .thumb { width: 100%; }
   .booking-actions, .car-row-actions { justify-content: start; }
   .nav > a:not(.btn) { padding: 8px 6px; }
-  .hero { padding-top: 28px; }
+  .hero { padding: 40px 0 32px; }
 }
 .right { text-align: right; }
 .promo-code { font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.05em; }
