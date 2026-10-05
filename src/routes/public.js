@@ -45,11 +45,7 @@ function renderCarPage(res, car, { form, error = null, status = 200 }) {
 
 router.get('/', (req, res) => {
   const featured = db.prepare(`${CAR_WITH_SHOP} WHERE cars.is_active = 1 ORDER BY cars.created_at DESC LIMIT 6`).all();
-  const stats = db
-    .prepare(`SELECT (SELECT COUNT(*) FROM cars JOIN shops ON shops.id = cars.shop_id AND shops.suspended = 0 WHERE cars.is_active = 1) AS cars,
-                     (SELECT COUNT(*) FROM shops WHERE suspended = 0) AS shops`)
-    .get();
-  res.render('home', { featured, stats, cities: cities(), categories: CATEGORIES });
+  res.render('home', { featured, cities: cities(), categories: CATEGORIES });
 });
 
 router.get('/cars', (req, res) => {
