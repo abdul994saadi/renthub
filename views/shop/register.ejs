@@ -10,7 +10,7 @@
       <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel"></label>
     </div>
     <div class="row-2">
-      <label>City<input name="city" required value="<%= form.city || '' %>" autocomplete="address-level2"></label>
+      <label>City<input name="city" list="city-list" required value="<%= form.city || '' %>" autocomplete="address-level2"></label><datalist id="city-list"><% CITIES.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
       <label>Street address<input name="address" value="<%= form.address || '' %>" autocomplete="street-address"></label>
     </div>
     <label>Password (at least 8 characters)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>

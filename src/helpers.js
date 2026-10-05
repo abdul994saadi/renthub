@@ -100,7 +100,10 @@ function carFeatures(car) {
   return car.features.split(',').map((f) => f.trim()).filter(Boolean);
 }
 
+// Main cities offered in the search box, in this order. Cities typed in by shops that are not here are added after them.
+const CITIES = ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Byblos', 'Zahle', 'Baalbek', 'Jounieh', 'Batrun', 'Aley', 'Bhamdoun'];
+
 module.exports = {
-  CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
+  CITIES, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
   money, lbp, lbpRate, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const { db } = require('../db');
-const { CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
+const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
 const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
 const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
@@ -22,7 +22,10 @@ function activeCar(id) {
 }
 
 function cities() {
-  return db.prepare(`SELECT DISTINCT city FROM shops WHERE city <> '' AND suspended = 0 ORDER BY city`).all().map((r) => r.city);
+  const known = new Set(CITIES.map((c) => c.toLowerCase()));
+  const others = db.prepare(`SELECT DISTINCT city FROM shops WHERE city <> '' AND suspended = 0 ORDER BY city`).all()
+    .map((r) => r.city).filter((c) => !known.has(c.toLowerCase()));
+  return [...CITIES, ...others];
 }
 
 // Everything the car page shows, in one place (the booking form re-renders it on errors).
@@ -66,7 +69,7 @@ router.get('/cars', (req, res) => {
     where.push(`(cars.make || ' ' || cars.model || ' ' || shops.name) LIKE ?`);
     params.push(`%${f.q}%`);
   }
-  if (f.city) { where.push('shops.city = ?'); params.push(f.city); }
+  if (f.city) { where.push('shops.city = ? COLLATE NOCASE'); params.push(f.city); }
   if (f.category) { where.push('cars.category = ?'); params.push(f.category); }
   if (f.transmission) { where.push('cars.transmission = ?'); params.push(f.transmission); }
   if (f.maxPrice) { where.push('cars.daily_price <= ?'); params.push(f.maxPrice); }

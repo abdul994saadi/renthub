@@ -4,6 +4,8 @@
   --text: #111827;
   --muted: #6b7280;
   --border: #e5e7eb;
+  --field-bg: var(--surface);
+  --field-border: #d9dde3;
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --primary-soft: #eff4ff;
@@ -25,7 +27,9 @@
     --surface: #181b21;
     --text: #eef0f3;
     --muted: #9aa1ad;
-    --border: #2a2f38;
+    --border: #353b46;
+    --field-bg: #12151a;
+    --field-border: #4a5261;
     --primary: #4f8bff;
     --primary-dark: #3b78f0;
     --primary-soft: #1a2540;
@@ -97,7 +101,7 @@ img, svg { max-width: 100%; display: block; }
 .btn-block { width: 100%; }
 .btn-outline { background: transparent; color: var(--primary); }
 .btn-outline:hover { background: var(--primary-soft); }
-.btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--field-border); }
 .btn-ghost:hover { background: var(--bg); }
 .btn-danger { background: transparent; color: var(--red); border-color: var(--border); }
 .btn-danger:hover { background: var(--red-soft); }
@@ -134,8 +138,8 @@ a.list-item:hover { text-decoration: none; border-color: var(--primary); }
 /* Forms */
 label { display: grid; gap: 6px; font-weight: 500; font-size: 0.9rem; min-width: 0; align-content: start; }
 input, select, textarea {
-  font: inherit; font-size: 16px; color: var(--text); background: var(--surface);
-  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%;
+  font: inherit; font-size: 16px; color: var(--text); background-color: var(--field-bg);
+  border: 1px solid var(--field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%;
   min-width: 0; max-width: 100%;
 }
 /* Same height for every single-line field, so rows line up. */
@@ -156,7 +160,7 @@ label.check { display: flex; align-items: center; gap: 10px; font-weight: 400; }
 .narrow-form { max-width: 640px; }
 .row-2, .row-3 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 .row-3 { grid-template-columns: repeat(3, 1fr); }
-fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin: 0; }
+fieldset { border: 1px solid var(--field-border); border-radius: 10px; padding: 12px 16px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin: 0; }
 fieldset > label:not(.check) { grid-column: 1 / -1; }
 legend { font-weight: 600; padding: 0 6px; }
 

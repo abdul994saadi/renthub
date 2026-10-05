@@ -9,7 +9,7 @@
       <label>Phone<input type="tel" name="phone" value="<%= form.phone %>"></label>
       <label>WhatsApp number<input type="tel" name="whatsapp" value="<%= form.whatsapp %>" placeholder="e.g. 03 123 456"></label>
     </div>
-    <label>City<input name="city" required value="<%= form.city %>"></label>
+    <label>City<input name="city" list="city-list" required value="<%= form.city %>"></label><datalist id="city-list"><% CITIES.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
     <label>Street address<input name="address" value="<%= form.address %>"></label>
     <label>Opening hours<input name="opening_hours" value="<%= form.opening_hours %>" placeholder="Sat–Thu 8:00–20:00"></label>
     <label>About your shop<textarea name="description" rows="4"><%= form.description %></textarea></label>
