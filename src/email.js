@@ -55,15 +55,26 @@ async function verifySmtp() {
   }
 }
 
+// Plain-text version of an email. Mail filters trust messages that include one.
+function htmlToText(html) {
+  return html
+    .replace(/<a [^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '$2: $1')
+    .replace(/<br\s*\/?>|<\/(p|tr|h1|h2|div)>/gi, '\n')
+    .replace(/<\/td>/gi, '  ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+}
+
 // Every email is stored in the `emails` table. Without SMTP settings it is only
 // stored, and can be read on the /dev/outbox page.
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, replyTo }) {
   const { lastInsertRowid } = db
     .prepare('INSERT INTO emails (to_address, subject, html) VALUES (?, ?, ?)')
     .run(to, subject, html);
   if (!transport) return;
   try {
-    await transport.sendMail({ from: FROM, to, subject, html });
+    await transport.sendMail({ from: FROM, to, subject, html, text: htmlToText(html), ...(replyTo && { replyTo }) });
     db.prepare('UPDATE emails SET delivered = 1 WHERE id = ?').run(lastInsertRowid);
   } catch (err) {
     console.error(`Email to ${to} failed:`, err.message);
@@ -115,6 +126,7 @@ function bookingTable(booking, car, shop) {
 async function sendBookingEmails(booking, car, shop) {
   await sendEmail({
     to: booking.customer_email,
+    replyTo: shop.email,
     subject: `Booking confirmed: ${car.make} ${car.model} (${booking.reference})`,
     html: layout(
       `Your booking is confirmed, ${booking.customer_name}!`,
@@ -129,6 +141,7 @@ async function sendBookingEmails(booking, car, shop) {
   });
   await sendEmail({
     to: shop.email,
+    replyTo: booking.customer_email,
     subject: `New booking ${booking.reference}: ${car.make} ${car.model}`,
     html: layout(
       booking.payment_status === 'paid' ? 'You have a new paid booking' : 'You have a new booking',
@@ -166,6 +179,7 @@ async function sendCustomerCancellationEmails(booking, car, shop, { late }) {
       : 'Nothing was charged for this booking.';
   await sendEmail({
     to: booking.customer_email,
+    replyTo: shop.email,
     subject: `Booking cancelled: ${booking.reference}`,
     html: layout(
       'Your booking has been cancelled',
@@ -175,6 +189,7 @@ async function sendCustomerCancellationEmails(booking, car, shop, { late }) {
   });
   await sendEmail({
     to: shop.email,
+    replyTo: booking.customer_email,
     subject: `Booking ${booking.reference} cancelled by the customer`,
     html: layout(
       'A customer cancelled their booking',
@@ -199,6 +214,7 @@ async function sendTestEmail(to) {
 async function sendCancellationEmail(booking, car, shop) {
   await sendEmail({
     to: booking.customer_email,
+    replyTo: shop.email,
     subject: `Booking cancelled: ${booking.reference}`,
     html: layout(
       'Your booking has been cancelled',
@@ -213,6 +229,7 @@ async function sendCancellationEmail(booking, car, shop) {
 async function sendConflictRefundEmail(booking, car, shop) {
   await sendEmail({
     to: booking.customer_email,
+    replyTo: shop.email,
     subject: `Payment refunded: ${car.make} ${car.model} is no longer available`,
     html: layout(
       'Sorry, this car was booked by someone else',
@@ -223,4 +240,4 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
+module.exports = { htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
