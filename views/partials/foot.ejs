@@ -1,7 +1,12 @@
 </main>
 <footer class="footer">
   <div class="wrap footer-inner">
-    <span>© <%= new Date().getFullYear() %> RentHub</span>
+    <span class="footer-left">
+      <span>© <%= new Date().getFullYear() %> RentHub</span>
+      <% if (supportWhatsapp()) { %>
+        <a class="footer-wa" href="<%= whatsappLink(supportWhatsapp(), 'Hi RentHub, I have a question:') %>" target="_blank" rel="noopener"><%- include('wa-icon') %> Questions? WhatsApp us</a>
+      <% } %>
+    </span>
     <span>
       <a href="/shop/register">List your rental shop</a>
       <% if (showOutbox) { %> · <a href="/dev/outbox">Test inbox</a><% } %>

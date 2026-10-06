@@ -86,7 +86,11 @@ img, svg { max-width: 100%; display: block; }
 .nav > a.active, .nav > a:not(.btn):hover { color: var(--text); background: var(--bg); text-decoration: none; }
 
 .footer { border-top: 1px solid var(--border); background: var(--surface); padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); font-size: 0.875rem; color: var(--muted); }
-.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.footer-left { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
+.footer-wa { display: inline-flex; align-items: center; gap: 6px; color: #128c4a; font-weight: 600; padding: 6px 12px; border: 1px solid #25d366; border-radius: 99px; }
+.footer-wa:hover { background: #25d366; color: #0b2e17; text-decoration: none; }
+@media (prefers-color-scheme: dark) { .footer-wa { color: #4ade80; } }
 
 /* Buttons */
 .btn {

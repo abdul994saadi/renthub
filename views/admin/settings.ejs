@@ -1,6 +1,12 @@
 <%- include('../partials/head', { title: 'Settings' }) %>
 <div class="wrap section">
   <%- include('../partials/admin-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/admin/settings/whatsapp" style="margin-bottom:20px">
+    <h2>WhatsApp for customer questions</h2>
+    <p class="muted small">Shown as a "WhatsApp us" button at the bottom of every page. Leave empty to hide it.</p>
+    <label>WhatsApp number<input name="support_whatsapp" type="tel" inputmode="tel" value="<%= supportWhatsapp() %>" placeholder="e.g. 03 123 456"></label>
+    <button class="btn" type="submit">Save number</button>
+  </form>
   <form class="card pad form narrow-form" method="post" action="/admin/settings/commission" style="margin-bottom:20px">
     <h2>Default commission</h2>
     <% if (commissionError) { %><div class="alert alert-error"><%= commissionError %></div><% } %>

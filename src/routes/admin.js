@@ -2,7 +2,7 @@
 const express = require('express');
 const crypto = require('node:crypto');
 const { db, getSetting, setSetting } = require('../db');
-const { todayISO, lbpRate } = require('../helpers');
+const { todayISO, lbpRate, supportWhatsapp, whatsappLink } = require('../helpers');
 const email = require('../email');
 const { promoUses } = require('../pricing');
 const scheduler = require('../scheduler');
@@ -210,6 +210,17 @@ router.post('/promos/:id/:action', (req, res) => {
 
 router.get('/settings', (req, res) => {
   res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null });
+});
+
+router.post('/settings/whatsapp', (req, res) => {
+  const number = String(req.body.support_whatsapp || '').trim();
+  if (number && !whatsappLink(number)) {
+    res.flash('error', 'Please enter a valid phone number, e.g. 03 123 456 or +961 3 123 456.');
+  } else {
+    setSetting('support_whatsapp', number);
+    res.flash('success', number ? `WhatsApp button saved: customers will reach ${number}.` : 'WhatsApp button removed from the site.');
+  }
+  res.redirect(303, '/admin/settings');
 });
 
 router.post('/settings/commission', (req, res) => {

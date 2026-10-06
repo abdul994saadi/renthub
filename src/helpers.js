@@ -27,6 +27,10 @@ function money(amount) {
 function lbpRate() {
   return Number(getSetting('lbp_rate', process.env.LBP_RATE || 89500)) || 0;
 }
+// RentHub's own WhatsApp number for customer questions (owner dashboard → Settings).
+function supportWhatsapp() {
+  return getSetting('support_whatsapp', process.env.SUPPORT_WHATSAPP || '');
+}
 function lbp(usd) {
   const rate = lbpRate();
   if (!rate || CURRENCY !== 'USD') return '';
@@ -105,5 +109,5 @@ const CITIES = ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Byblos', 'Zahle', 'Baalbe
 
 module.exports = {
   CITIES, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
-  money, lbp, lbpRate, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
+  money, lbp, lbpRate, supportWhatsapp, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };
