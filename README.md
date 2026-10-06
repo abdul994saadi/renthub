@@ -88,7 +88,7 @@ Each email is sent once. "Send due reminders now" on the dashboard runs the job 
 ## Automatic WhatsApp messages
 
 Optional. Needs a WhatsApp Business account on Meta (WhatsApp Cloud API): a phone number ID, an access token, and message
-templates approved in WhatsApp Manager. Set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and the template names; the
+templates approved in WhatsApp Manager. Booking confirmation codes use an "Authentication" template with a copy-code button, named in `WHATSAPP_TEMPLATE_CODE`; without it codes go by email. Set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and the template names; the
 confirmation template is sent when a booking is confirmed and the reminder template with the pick-up reminder.
 Without these, the site still shows "Chat on WhatsApp" buttons (free wa.me links).
 

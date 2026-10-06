@@ -4,7 +4,16 @@
   <form class="card pad form narrow-form" method="post" action="/admin/settings/protection" style="margin-bottom:20px">
     <h2>Protection against fake bookings</h2>
     <p class="muted small">Applies while customers pay at pick-up. Online card payments do not need it.</p>
-    <label class="check"><input type="checkbox" name="verify_email" <%= verify.verifyEmailRequired() ? 'checked' : '' %>> <span>Customers confirm their email with a 6-digit code before booking<br><span class="muted small">Asked only once per email on each phone or computer.</span></span></label>
+    <label class="check"><input type="checkbox" name="verify_email" <%= verify.verifyEmailRequired() ? 'checked' : '' %>> <span>Customers confirm a 6-digit code before booking<br><span class="muted small">Asked only once per phone number or email on each phone or computer.</span></span></label>
+    <label>Send the code by
+      <select name="verify_channel">
+        <option value="whatsapp" <%= verify.codeChannel() === 'whatsapp' ? 'selected' : '' %>>WhatsApp (email if WhatsApp cannot deliver it)</option>
+        <option value="email" <%= verify.codeChannel() === 'email' ? 'selected' : '' %>>Email only</option>
+      </select>
+    </label>
+    <% if (verify.codeChannel() === 'whatsapp' && !verify.whatsappReady()) { %>
+      <div class="alert alert-info small">WhatsApp is not connected yet, so codes are sent by email for now. They switch to WhatsApp automatically once <code>WHATSAPP_TOKEN</code>, <code>WHATSAPP_PHONE_NUMBER_ID</code> and <code>WHATSAPP_TEMPLATE_CODE</code> are set in Render.</div>
+    <% } %>
     <label>Maximum upcoming unpaid bookings per customer (email or phone)<input name="max_open_bookings" type="number" min="0" max="50" value="<%= verify.maxOpenBookings() %>"></label>
     <p class="muted small">0 means no limit.</p>
     <button class="btn" type="submit">Save protection</button>

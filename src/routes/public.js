@@ -155,12 +155,11 @@ function renderCarWithError(res, car, d, error) {
 }
 
 // Pay-at-pick-up bookings from an email not yet verified on this device need a code sent by email.
-const needsCode = (req, d) => payAtPickup && verify.needsCode(req, d.email);
+const needsCode = (req, d) => payAtPickup && verify.needsCode(req, d.email, d.phone);
 
-function renderReview(res, { car, d, q, notice = null, verifying = false, codeError = null }) {
+function renderReview(res, { car, d, q, notice = null, verifying = false, codeError = null, sentTo = null }) {
   const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  if (verifying && !notice && !codeError) notice = `We emailed a 6-digit code to ${d.email}. Enter it at the bottom of this page to confirm your booking.`;
-  res.render('review', { car, shop, d, q, notice, verifying, codeError });
+  res.render('review', { car, shop, d, q, notice, verifying, codeError, sentTo });
 }
 
 // Step 1: check the details and show a summary to review.
@@ -173,8 +172,11 @@ router.post('/cars/:id/book', async (req, res) => {
   const q = quoteFor(car, d);
   if (q.promoError) return renderCarWithError(res, car, d, q.promoError);
   if (!needsCode(req, d)) return renderReview(res, { car, d, q });
-  const sent = await verify.issueCode(d.email);
-  renderReview(res, { car, d, q, verifying: true, codeError: sent.ok ? null : sent.error });
+  const sent = await verify.issueCode(d.email, d.phone);
+  renderReview(res, {
+    car, d, q, verifying: true, sentTo: sent.ok ? sent : null, codeError: sent.ok ? null : sent.error,
+    notice: sent.ok ? `We sent a 6-digit code ${sent.via === 'whatsapp' ? `by WhatsApp to ${sent.to}` : `by email to ${sent.to}`}. Enter it at the bottom of this page to confirm your booking.` : null,
+  });
 });
 
 // The customer asked for a new email code on the review page.
@@ -185,11 +187,11 @@ router.post('/cars/:id/resend-code', async (req, res) => {
   const error = validateBooking(d, car);
   if (error) return renderCarWithError(res, car, d, error);
   const q = quoteFor(car, d);
-  const sent = await verify.issueCode(d.email);
+  const sent = await verify.issueCode(d.email, d.phone);
   renderReview(res, {
-    car, d, q, verifying: true,
+    car, d, q, verifying: true, sentTo: sent.ok ? sent : null,
     codeError: sent.ok ? null : sent.error,
-    notice: sent.ok ? (sent.recent ? 'A code was sent less than a minute ago. Please check your inbox and junk folder.' : `A new code was sent to ${d.email}.`) : null,
+    notice: sent.ok ? (sent.recent ? `A code was sent to ${sent.to} less than a minute ago. Please check your ${sent.via === 'whatsapp' ? 'WhatsApp' : 'inbox and junk folder'}.` : `A new code was sent ${sent.via === 'whatsapp' ? 'by WhatsApp' : 'by email'} to ${sent.to}.`) : null,
   });
 });
 
@@ -208,9 +210,9 @@ router.post('/cars/:id/confirm', async (req, res) => {
     return renderReview(res, { car, d, q, verifying: needsCode(req, d), notice: 'The price was updated. Please check the new total and confirm again.' });
   }
   if (needsCode(req, d)) {
-    const check = verify.checkCode(d.email, req.body.code);
+    const check = verify.checkCode(d.email, d.phone, req.body.code);
     if (!check.ok) return renderReview(res, { car, d, q, verifying: true, codeError: check.error });
-    verify.rememberVerified(req, res, d.email);
+    verify.rememberVerified(req, res, check.key);
   }
 
   const booking = createBooking(car, d, q, { payAtPickup });

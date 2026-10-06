@@ -41,11 +41,11 @@
       <%- hidden %>
       <% if (verifying) { %>
         <div class="verify-box">
-          <label>Enter the 6-digit code we emailed to <%= d.email %>
+          <label>Enter the 6-digit code<%= sentTo ? (sentTo.via === 'whatsapp' ? ` we sent by WhatsApp to ${sentTo.to}` : ` we emailed to ${sentTo.to}`) : '' %>
             <input name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" placeholder="123456" autofocus>
           </label>
           <% if (codeError) { %><div class="alert alert-error"><%= codeError %></div><% } %>
-          <p class="muted small">This confirms your email so the shop knows the booking is real. You only need to do this once on this device. Can't find it? Check your junk folder.</p>
+          <p class="muted small">This confirms your contact details so the shop knows the booking is real. You only need to do this once on this device.<% if (!sentTo || sentTo.via === 'email') { %> Can't find the email? Check your junk folder.<% } %></p>
         </div>
       <% } %>
       <a class="btn btn-ghost" href="/cars/<%= car.id %>?pickup=<%= d.pickup %>&return=<%= d.ret %>">Change</a>

@@ -17,6 +17,8 @@ const config = {
     confirmation: env('WHATSAPP_TEMPLATE_CONFIRMATION'),
     // Same parameters as the confirmation template.
     pickup_reminder: env('WHATSAPP_TEMPLATE_PICKUP_REMINDER'),
+    // An "Authentication" template with a copy-code button: {{1}} is the 6-digit code.
+    code: env('WHATSAPP_TEMPLATE_CODE'),
   },
 };
 const enabled = Boolean(config.token && config.phoneNumberId);
@@ -28,7 +30,7 @@ function toWhatsAppNumber(phone) {
   return digits.length >= 10 ? digits : null;
 }
 
-async function sendTemplate(to, template, params) {
+async function sendTemplate(to, template, params, extraComponents = []) {
   const res = await fetch(`${config.apiBase}/${config.apiVersion}/${config.phoneNumberId}/messages`, {
     method: 'POST',
     headers: { authorization: `Bearer ${config.token}`, 'content-type': 'application/json' },
@@ -39,7 +41,7 @@ async function sendTemplate(to, template, params) {
       template: {
         name: template,
         language: { code: config.language },
-        components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text: String(text) })) }],
+        components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text: String(text) })) }, ...extraComponents],
       },
     }),
     signal: AbortSignal.timeout(15000),
@@ -65,4 +67,21 @@ async function notifyCustomer(kind, booking, car, shop) {
   }
 }
 
-module.exports = { enabled, config, toWhatsAppNumber, notifyCustomer };
+const codesEnabled = enabled && Boolean(config.templates.code);
+
+// Sends a booking confirmation code. Returns true when WhatsApp accepted the message.
+async function sendCode(phone, code) {
+  const to = toWhatsAppNumber(phone);
+  if (!codesEnabled || !to) return false;
+  try {
+    await sendTemplate(to, config.templates.code, [code], [
+      { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+    ]);
+    return true;
+  } catch (err) {
+    console.error(`WhatsApp code to ${to} failed:`, err.message);
+    return false;
+  }
+}
+
+module.exports = { enabled, codesEnabled, config, toWhatsAppNumber, notifyCustomer, sendCode };

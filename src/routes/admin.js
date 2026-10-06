@@ -220,6 +220,7 @@ router.post('/settings/protection', (req, res) => {
     return res.redirect(303, '/admin/settings');
   }
   setSetting('verify_email', req.body.verify_email === 'on' ? '1' : '0');
+  setSetting('verify_channel', req.body.verify_channel === 'email' ? 'email' : 'whatsapp');
   setSetting('max_open_bookings', String(max));
   res.flash('success', 'Booking protection saved.');
   res.redirect(303, '/admin/settings');

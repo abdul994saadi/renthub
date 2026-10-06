@@ -59,3 +59,5 @@ services:
         sync: false
       - key: WHATSAPP_TEMPLATE_PICKUP_REMINDER
         sync: false
+      - key: WHATSAPP_TEMPLATE_CODE
+        sync: false
