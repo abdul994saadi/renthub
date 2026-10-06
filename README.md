@@ -113,7 +113,7 @@ Copy `.env.example` to `.env`. In production you must set `SESSION_SECRET`, plus
 | `PAYMENT_MODE` | `online` (default) or `pickup` |
 | `APS_SHA_TYPE` | `sha256` (default) or `sha512` |
 | `APS_ENVIRONMENT` | `sandbox` (default) or `production` |
-| `PLATFORM_FEE_PERCENT` | RentHub's commission, shown on shops' Payments tab |
+| `PLATFORM_FEE_PERCENT` | Starting default commission. Once set in owner dashboard → Settings, that value is used instead; each shop can also get its own rate on the Shops page |
 | `ADMIN_PASSWORD` | Enables the `/admin/email` check page |
 | `TIMEZONE` | Shops' time zone for pick-up times (default `Asia/Beirut`) |
 | `FREE_CANCELLATION_HOURS` | Free cancellation window before pick-up (default `24`) |

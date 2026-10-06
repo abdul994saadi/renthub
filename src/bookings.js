@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { db, transaction } = require('./db');
 const { localToDate, FREE_CANCELLATION_HOURS } = require('./helpers');
+const commission = require('./commission');
 
 // How long a car is held while the customer is on the payment page.
 const HOLD_MINUTES = 30;
@@ -59,6 +60,8 @@ function createBooking(car, details, q, { payAtPickup = false } = {}) {
       crypto.randomBytes(24).toString('base64url'),
       ...(payAtPickup ? ['confirmed'] : ['pending_payment', `+${HOLD_MINUTES} minutes`]),
     );
+    const shop = db.prepare('SELECT commission_percent FROM shops WHERE id = ?').get(car.shop_id);
+    db.prepare('UPDATE bookings SET commission_percent = ? WHERE id = ?').run(commission.shopPercent(shop), lastInsertRowid);
     const insertExtra = db.prepare('INSERT INTO booking_extras (booking_id, extra_id, name, price, per, total) VALUES (?, ?, ?, ?, ?, ?)');
     for (const e of q.extras) insertExtra.run(lastInsertRowid, e.id, e.name, e.price, e.per, e.total);
     return db.prepare('SELECT * FROM bookings WHERE reference = ?').get(reference);

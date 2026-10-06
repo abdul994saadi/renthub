@@ -4,10 +4,10 @@ const crypto = require('node:crypto');
 const { db, getSetting, setSetting } = require('../db');
 const { todayISO, lbpRate } = require('../helpers');
 const email = require('../email');
-const payments = require('../payments');
 const { promoUses } = require('../pricing');
 const scheduler = require('../scheduler');
 const documents = require('../documents');
+const commission = require('../commission');
 
 const router = express.Router();
 
@@ -26,9 +26,6 @@ function requireAdmin(req, res, next) {
 }
 router.use(requireAdmin);
 
-const feePercent = () => payments.PLATFORM_FEE_PERCENT;
-const commission = (amount) => Math.round(amount * feePercent()) / 100;
-
 // Bookings that count as business: confirmed or completed (not cancelled, expired or unpaid holds).
 const LIVE = `status IN ('confirmed', 'completed')`;
 
@@ -43,8 +40,10 @@ router.get('/', (req, res) => {
       (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE ${LIVE} AND date(created_at) >= ?) AS month_value,
       (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE ${LIVE}) AS all_value,
       (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE payment_status = 'paid') AS paid_online,
-      (SELECT COUNT(*) FROM bookings WHERE status = 'cancelled' AND date(created_at) >= ?) AS month_cancelled`)
-    .get(monthStart, monthStart, monthStart);
+      (SELECT COUNT(*) FROM bookings WHERE status = 'cancelled' AND date(created_at) >= ?) AS month_cancelled,
+      (SELECT ${commission.COMMISSION_SUM} FROM bookings b JOIN shops s ON s.id = b.shop_id WHERE b.${LIVE} AND date(b.created_at) >= ?) AS month_commission,
+      (SELECT ${commission.COMMISSION_SUM} FROM bookings b JOIN shops s ON s.id = b.shop_id WHERE b.${LIVE}) AS all_commission`)
+    .get(monthStart, monthStart, monthStart, commission.defaultPercent(), monthStart, commission.defaultPercent());
   const recent = db.prepare(
     `SELECT bookings.*, cars.make, cars.model, shops.name AS shop_name FROM bookings
      JOIN cars ON cars.id = bookings.car_id JOIN shops ON shops.id = bookings.shop_id
@@ -53,8 +52,8 @@ router.get('/', (req, res) => {
   ).all();
   const pendingShops = db.prepare('SELECT * FROM shops WHERE verified = 0 AND suspended = 0 ORDER BY created_at DESC LIMIT 5').all();
   res.render('admin/overview', {
-    stats, recent, pendingShops, feePercent: feePercent(),
-    monthCommission: commission(stats.month_value), allCommission: commission(stats.all_value),
+    stats, recent, pendingShops, feePercent: commission.defaultPercent(),
+    customRates: db.prepare('SELECT COUNT(*) AS n FROM shops WHERE commission_percent IS NOT NULL').get().n,
   });
 });
 
@@ -89,14 +88,36 @@ router.get('/bookings/:id/documents/:docId', (req, res) => {
 });
 
 router.get('/shops', (req, res) => {
+  const monthStart = `${todayISO().slice(0, 7)}-01`;
+  const rate = commission.defaultPercent();
   const shops = db.prepare(
     `SELECT shops.*,
        (SELECT COUNT(*) FROM cars WHERE cars.shop_id = shops.id AND cars.is_active = 1) AS car_count,
        (SELECT COUNT(*) FROM bookings b WHERE b.shop_id = shops.id AND b.${LIVE}) AS booking_count,
-       (SELECT COALESCE(SUM(total_price), 0) FROM bookings b WHERE b.shop_id = shops.id AND b.${LIVE}) AS booking_value
+       (SELECT COALESCE(SUM(total_price), 0) FROM bookings b WHERE b.shop_id = shops.id AND b.${LIVE}) AS booking_value,
+       (SELECT ${commission.COMMISSION_SUM} FROM bookings b JOIN shops s ON s.id = b.shop_id
+          WHERE b.shop_id = shops.id AND b.${LIVE} AND date(b.created_at) >= ?) AS month_commission,
+       (SELECT ${commission.COMMISSION_SUM} FROM bookings b JOIN shops s ON s.id = b.shop_id
+          WHERE b.shop_id = shops.id AND b.${LIVE}) AS all_commission
      FROM shops ORDER BY shops.suspended, shops.verified, shops.created_at DESC`,
-  ).all().map((s) => ({ ...s, commission: commission(s.booking_value) }));
-  res.render('admin/shops', { shops, feePercent: feePercent() });
+  ).all(rate, monthStart, rate).map((s) => ({ ...s, rate: commission.shopPercent(s) }));
+  res.render('admin/shops', { shops, defaultRate: rate });
+});
+
+// Sets a shop's own commission rate; an empty value goes back to the default rate.
+router.post('/shops/:id/commission', (req, res) => {
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(Number(req.params.id));
+  const percent = commission.parsePercent(req.body.commission_percent);
+  if (!shop) return res.redirect(303, '/admin/shops');
+  if (Number.isNaN(percent)) {
+    res.flash('error', 'Enter a commission between 0 and 100, or leave it empty to use the default rate.');
+  } else {
+    db.prepare('UPDATE shops SET commission_percent = ? WHERE id = ?').run(percent, shop.id);
+    res.flash('success', percent === null
+      ? `${shop.name} now uses the default commission (${commission.defaultPercent()}%).`
+      : `${shop.name}'s commission is now ${percent}%. It applies to new bookings.`);
+  }
+  res.redirect(303, '/admin/shops');
 });
 
 router.post('/shops/:id/:action', (req, res) => {
@@ -188,13 +209,26 @@ router.post('/promos/:id/:action', (req, res) => {
 // ---------- Settings ----------
 
 router.get('/settings', (req, res) => {
-  res.render('admin/settings', { rate: lbpRate(), error: null });
+  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null });
+});
+
+router.post('/settings/commission', (req, res) => {
+  const percent = commission.parsePercent(req.body.commission_percent);
+  if (percent === null || Number.isNaN(percent)) {
+    return res.status(400).render('admin/settings', {
+      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null,
+      commissionError: 'Please enter a commission between 0 and 100.',
+    });
+  }
+  commission.setDefaultPercent(percent);
+  res.flash('success', `Default commission saved: ${percent}%. It applies to new bookings from shops without their own rate.`);
+  res.redirect(303, '/admin/settings');
 });
 
 router.post('/settings', (req, res) => {
   const rate = Number(String(req.body.lbp_rate || '').replace(/[,\s]/g, ''));
   if (!(rate >= 0 && rate < 10_000_000)) {
-    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
+    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
   }
   setSetting('lbp_rate', rate);
   res.flash('success', rate ? `Exchange rate saved: 1 USD = ${new Intl.NumberFormat('en-US').format(rate)} LBP.` : 'LBP prices are now hidden.');

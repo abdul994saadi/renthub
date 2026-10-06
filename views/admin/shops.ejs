@@ -2,6 +2,7 @@
 <div class="wrap section">
   <%- include('../partials/admin-nav') %>
   <p class="muted">Verify a shop after checking its documents (commercial registration, ID). Verified shops get a badge and appear first. Suspending a shop hides its cars and blocks its login; its existing bookings stay.</p>
+  <p class="muted">Commission: every shop pays the default rate (<strong><%= defaultRate %>%</strong>, change it in <a href="/admin/settings">Settings</a>) unless you set its own rate below. Leave the box empty to use the default. A new rate applies to new bookings only.</p>
   <% if (!shops.length) { %><div class="empty card">No shops yet.</div><% } %>
   <div class="list">
     <% shops.forEach(s => { %>
@@ -11,7 +12,12 @@
             <% if (s.verified) { %><%- include('../partials/verified') %><% } %>
             <% if (s.suspended) { %><span class="chip chip-red">Suspended</span><% } %></div>
           <div class="small muted"><%= [s.address, s.city].filter(Boolean).join(', ') %> · <%= s.email %> · <%= s.phone || 'no phone' %> · joined <%= s.created_at.slice(0, 10) %></div>
-          <div class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %> · <%= s.booking_count %> booking<%= s.booking_count === 1 ? '' : 's' %> worth <strong><%= money(s.booking_value) %></strong><% if (feePercent) { %> · commission <strong><%= money(s.commission) %></strong><% } %></div>
+          <div class="small"><%= s.car_count %> car<%= s.car_count === 1 ? '' : 's' %> · <%= s.booking_count %> booking<%= s.booking_count === 1 ? '' : 's' %> worth <strong><%= money(s.booking_value) %></strong></div>
+          <div class="small">Commission <strong><%= s.rate %>%</strong><%= s.commission_percent === null ? ' (default)' : ' (own rate)' %> · this month <strong><%= money(s.month_commission) %></strong> · all time <strong><%= money(s.all_commission) %></strong></div>
+          <form class="commission-form" method="post" action="/admin/shops/<%= s.id %>/commission">
+            <label class="small">Own rate (%)<input name="commission_percent" inputmode="decimal" value="<%= s.commission_percent ?? '' %>" placeholder="Default <%= defaultRate %>"></label>
+            <button class="btn btn-small btn-ghost" type="submit">Save rate</button>
+          </form>
         </div>
         <div class="booking-actions">
           <form method="post" action="/admin/shops/<%= s.id %>/<%= s.verified ? 'unverify' : 'verify' %>"><button class="btn btn-small <%= s.verified ? 'btn-ghost' : '' %>"><%= s.verified ? 'Remove badge' : 'Verify' %></button></form>

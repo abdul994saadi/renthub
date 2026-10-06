@@ -3,12 +3,12 @@
   <%- include('../partials/admin-nav') %>
   <div class="stats">
     <div class="card stat"><span class="muted small">Bookings this month</span><strong><%= stats.month_bookings %></strong><span class="muted small"><%= money(stats.month_value) %> · <%= stats.month_cancelled %> cancelled</span></div>
-    <div class="card stat"><span class="muted small">Your commission this month (<%= feePercent %>%)</span><strong><%= money(monthCommission) %></strong><span class="muted small">all time: <%= money(allCommission) %></span></div>
+    <div class="card stat"><span class="muted small">Your commission this month</span><strong><%= money(stats.month_commission) %></strong><span class="muted small">all time: <%= money(stats.all_commission) %> · default <%= feePercent %>%<%= customRates ? ` · ${customRates} shop${customRates === 1 ? '' : 's'} with own rate` : '' %></span></div>
     <div class="card stat"><span class="muted small">Booking value, all time</span><strong><%= money(stats.all_value) %></strong><span class="muted small"><%= money(stats.paid_online) %> paid online</span></div>
     <div class="card stat"><span class="muted small">Shops</span><strong><%= stats.shops %></strong><span class="muted small"><%= stats.verified_shops %> verified · <%= stats.suspended_shops %> suspended · <%= stats.active_cars %> cars</span></div>
   </div>
   <form method="post" action="/admin/reminders/run" class="right" style="margin-bottom:12px"><button class="btn btn-small btn-ghost">Send due reminders now</button></form>
-  <% if (!feePercent) { %><div class="alert alert-info">Your commission is set to 0%. Set <code>PLATFORM_FEE_PERCENT</code> in Render to charge shops a commission.</div><% } %>
+  <% if (!feePercent && !customRates) { %><div class="alert alert-info">Your commission is set to 0%. Set a default rate in <a href="/admin/settings">Settings</a>, or a rate for each shop on the <a href="/admin/shops">Shops</a> page.</div><% } %>
 
   <% if (pendingShops.length) { %>
     <h2 class="section-title">Shops waiting for verification</h2>

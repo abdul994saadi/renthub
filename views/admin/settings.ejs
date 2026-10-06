@@ -1,6 +1,13 @@
 <%- include('../partials/head', { title: 'Settings' }) %>
 <div class="wrap section">
   <%- include('../partials/admin-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/admin/settings/commission" style="margin-bottom:20px">
+    <h2>Default commission</h2>
+    <% if (commissionError) { %><div class="alert alert-error"><%= commissionError %></div><% } %>
+    <p class="muted small">RentHub's share of each booking. Shops use this rate unless you give them their own rate on the <a href="/admin/shops">Shops</a> page. A new rate applies to new bookings only.</p>
+    <label>Commission (%)<input name="commission_percent" inputmode="decimal" value="<%= commissionRate %>" required></label>
+    <button class="btn" type="submit">Save commission</button>
+  </form>
   <form class="card pad form narrow-form" method="post" action="/admin/settings">
     <h2>Lebanese pound prices</h2>
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>

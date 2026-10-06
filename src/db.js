@@ -114,6 +114,8 @@ addColumn('bookings', 'discount', 'REAL NOT NULL DEFAULT 0');
 addColumn('bookings', 'pickup_reminder_sent_at', 'TEXT');
 addColumn('bookings', 'return_reminder_sent_at', 'TEXT');
 addColumn('bookings', 'review_requested_at', 'TEXT');
+addColumn('bookings', 'commission_percent', 'REAL');
+addColumn('shops', 'commission_percent', 'REAL');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS car_photos (

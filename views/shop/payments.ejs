@@ -8,11 +8,19 @@
   <div class="stats">
     <div class="card stat"><span class="muted small">Paid bookings</span><strong><%= totals.count %></strong></div>
     <div class="card stat"><span class="muted small">Collected for you</span><strong><%= money(totals.gross) %></strong><span class="muted small">after refunds</span></div>
-    <% if (feePercent) { %>
-      <div class="card stat"><span class="muted small">RentHub fee (<%= feePercent %>%)</span><strong><%= money(fee) %></strong></div>
+    <% if (fee) { %>
+      <div class="card stat"><span class="muted small">RentHub fee</span><strong><%= money(fee) %></strong></div>
     <% } %>
     <div class="card stat"><span class="muted small">Your share</span><strong><%= money(totals.gross - fee) %></strong></div>
   </div>
+  <h2>RentHub commission</h2>
+  <p class="muted">Your commission rate is <strong><%= feePercent %>%</strong> of each booking's total. If the rate changes, it applies only to bookings made after the change.</p>
+  <% if (owed.count) { %>
+    <div class="stats">
+      <div class="card stat"><span class="muted small">Bookings paid at pick-up</span><strong><%= owed.count %></strong><span class="muted small">worth <%= money(owed.value) %></span></div>
+      <div class="card stat"><span class="muted small">Commission on these bookings</span><strong><%= money(owed.fee) %></strong><span class="muted small">payable to RentHub</span></div>
+    </div>
+  <% } %>
   <h2>Recent payments</h2>
   <% if (!recent.length) { %><div class="empty card">No payments yet.</div><% } %>
   <div class="list">

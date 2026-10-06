@@ -11,6 +11,7 @@ const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
 const { shopExtras, withExtras } = require('../pricing');
 const documents = require('../documents');
+const commission = require('../commission');
 
 // Booking rows for lists: chosen extras and uploaded driver documents.
 const withDetails = (bookings) => withExtras(bookings).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) }));
@@ -314,13 +315,21 @@ router.post('/bookings/:id/status', async (req, res) => {
 
 // Customers pay RentHub online; RentHub pays each shop its share.
 router.get('/payments', (req, res) => {
+  const rate = commission.defaultPercent();
   const totals = db
     .prepare(
-      `SELECT COUNT(*) AS count, COALESCE(SUM(total_price), 0) AS gross
-       FROM bookings WHERE shop_id = ? AND payment_status = 'paid'`,
+      `SELECT COUNT(*) AS count, COALESCE(SUM(b.total_price), 0) AS gross, ${commission.COMMISSION_SUM} AS fee
+       FROM bookings b JOIN shops s ON s.id = b.shop_id WHERE b.shop_id = ? AND b.payment_status = 'paid'`,
     )
-    .get(req.shop.id);
-  const fee = Math.round(totals.gross * payments.PLATFORM_FEE_PERCENT) / 100;
+    .get(rate, req.shop.id);
+  // With pay at pick-up the shop collects the money, so the commission is owed on its confirmed and completed bookings.
+  const owed = db
+    .prepare(
+      `SELECT COUNT(*) AS count, COALESCE(SUM(b.total_price), 0) AS value, ${commission.COMMISSION_SUM} AS fee
+       FROM bookings b JOIN shops s ON s.id = b.shop_id
+       WHERE b.shop_id = ? AND b.status IN ('confirmed', 'completed') AND b.payment_status <> 'paid'`,
+    )
+    .get(rate, req.shop.id);
   const recent = db
     .prepare(
       `SELECT bookings.*, cars.make, cars.model, cars.year FROM bookings JOIN cars ON cars.id = bookings.car_id
@@ -328,7 +337,7 @@ router.get('/payments', (req, res) => {
        ORDER BY bookings.paid_at DESC LIMIT 20`,
     )
     .all(req.shop.id);
-  res.render('shop/payments', { totals, fee, feePercent: payments.PLATFORM_FEE_PERCENT, recent });
+  res.render('shop/payments', { totals, owed, fee: totals.fee, feePercent: commission.shopPercent(req.shop), recent });
 });
 
 // ---------- Extras ----------
