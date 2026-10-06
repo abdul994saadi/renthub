@@ -9,6 +9,8 @@ const HOLD_MINUTES = 30;
 // A car is taken by confirmed bookings and by unexpired payment holds.
 const BLOCKING = `(status = 'confirmed' OR (status = 'pending_payment' AND hold_expires_at > datetime('now')))`;
 
+// Bookings use [pickup_date, return_date): the car is free again on the return day.
+// Blocked days are inclusive [start_date, end_date].
 function isCarAvailable(carId, pickup, ret, ignoreBookingId = 0) {
   const clash = db
     .prepare(
@@ -17,17 +19,25 @@ function isCarAvailable(carId, pickup, ret, ignoreBookingId = 0) {
        LIMIT 1`,
     )
     .get(carId, ignoreBookingId, ret, pickup);
-  return !clash;
+  return !clash && !blockedBetween(carId, pickup, ret);
 }
 
+// The shop's blocked period that overlaps a stay from pickup to ret, if any.
+function blockedBetween(carId, pickup, ret) {
+  return db.prepare('SELECT * FROM car_blocks WHERE car_id = ? AND start_date < ? AND end_date >= ? LIMIT 1').get(carId, ret, pickup);
+}
+
+// Booked and blocked periods ahead, as [pickup_date, return_date) ranges for the calendar.
 function upcomingBookedRanges(carId, fromDate, limit = 100) {
   return db
     .prepare(
       `SELECT pickup_date, return_date FROM bookings
        WHERE car_id = ? AND ${BLOCKING} AND return_date > ?
-       ORDER BY pickup_date LIMIT ?`,
+       UNION ALL
+       SELECT start_date, date(end_date, '+1 day') FROM car_blocks WHERE car_id = ? AND end_date >= ?
+       ORDER BY 1 LIMIT ?`,
     )
-    .all(carId, fromDate, limit);
+    .all(carId, fromDate, carId, fromDate, limit);
 }
 
 function newReference() {
@@ -117,6 +127,7 @@ function hasManageAccess(booking, token) {
 }
 
 module.exports = {
+  blockedBetween,
   cancellationPolicy, hasManageAccess,
   HOLD_MINUTES, isCarAvailable, upcomingBookedRanges, createBooking, recordPayment, expireBooking,
 };

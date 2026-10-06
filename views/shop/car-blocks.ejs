@@ -1,0 +1,48 @@
+<%- include('../partials/head', { title: 'Block dates' }) %>
+<div class="wrap section">
+  <%- include('../partials/shop-nav') %>
+  <p><a href="/shop/cars">← My cars</a></p>
+  <h2>Block dates: <%= car.year %> <%= car.make %> <%= car.model %></h2>
+  <p class="muted">Take the car off the road for service, repairs or any other reason. Customers cannot book it on blocked days, which show as unavailable in its calendar.</p>
+
+  <form class="card pad form narrow-form" method="post" action="/shop/cars/<%= car.id %>/blocks">
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <div class="row-2">
+      <label>First unavailable day<input type="date" name="start_date" required min="<%= today %>" value="<%= form.start_date || '' %>"></label>
+      <label>Last unavailable day<input type="date" name="end_date" required min="<%= today %>" value="<%= form.end_date || '' %>"></label>
+    </div>
+    <div class="row-2">
+      <label>Reason
+        <select name="reason"><% reasons.forEach(r => { %><option <%= form.reason === r ? 'selected' : '' %>><%= r %></option><% }) %></select>
+      </label>
+      <label>Note (optional, only you see it)<input name="note" maxlength="100" placeholder="e.g. garage, oil change" value="<%= form.note || '' %>"></label>
+    </div>
+    <p class="muted small">For a single day, pick the same day twice. The car can be booked again from the day after the last unavailable day.</p>
+    <button class="btn" type="submit">Block these days</button>
+  </form>
+
+  <h2 class="section-title">Blocked days</h2>
+  <% if (!blocks.length) { %><div class="empty card">No days blocked. The car can be booked on any free day.</div><% } %>
+  <div class="list">
+    <% blocks.forEach(b => { %>
+      <div class="card list-item">
+        <div>
+          <strong><%= formatDate(b.start_date) %><%= b.end_date !== b.start_date ? ` – ${formatDate(b.end_date)}` : '' %></strong>
+          <div class="small muted"><%= b.reason || 'Blocked' %></div>
+        </div>
+        <form method="post" action="/shop/cars/<%= car.id %>/blocks/<%= b.id %>/delete"><button class="btn btn-small btn-ghost">Unblock</button></form>
+      </div>
+    <% }) %>
+  </div>
+
+  <% if (bookings.length) { %>
+    <h2 class="section-title">Upcoming bookings for this car</h2>
+    <p class="muted small">These days are already taken and cannot be blocked.</p>
+    <div class="list">
+      <% bookings.forEach(b => { %>
+        <div class="card list-item"><div><strong><%= formatDate(b.pickup_date) %> – <%= formatDate(b.return_date) %></strong><div class="small muted"><%= b.reference %> · <%= b.customer_name %></div></div></div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

@@ -184,6 +184,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .chip { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--primary-soft); color: var(--primary); text-transform: capitalize; }
 .chip-green { background: var(--green-soft); color: var(--green); }
 .chip-red { background: var(--red-soft); color: var(--red); }
+.chip-amber { background: #fff4d6; color: #8a5a00; }
+@media (prefers-color-scheme: dark) { .chip-amber { background: #3a2e10; color: #fbbf24; } }
 .chip-blue { background: var(--primary-soft); color: var(--primary); }
 .chip-float { position: absolute; top: 10px; left: 10px; background: var(--surface); }
 

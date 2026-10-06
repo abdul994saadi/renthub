@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const multer = require('multer');
 const { db } = require('../db');
 const { hashPassword, verifyPassword, logIn, logOut, requireShop } = require('../auth');
-const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO } = require('../helpers');
+const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO, isISODate } = require('../helpers');
 const { sendCancellationEmail } = require('../email');
 const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
@@ -124,10 +124,11 @@ router.get('/', (req, res) => {
 router.get('/cars', (req, res) => {
   const cars = db
     .prepare(
-      `SELECT cars.*, (SELECT COUNT(*) FROM bookings b WHERE b.car_id = cars.id AND b.status = 'confirmed') AS booking_count
+      `SELECT cars.*, (SELECT COUNT(*) FROM bookings b WHERE b.car_id = cars.id AND b.status = 'confirmed') AS booking_count,
+         (SELECT start_date || ' to ' || end_date FROM car_blocks k WHERE k.car_id = cars.id AND k.end_date >= ? ORDER BY start_date LIMIT 1) AS next_block
        FROM cars WHERE shop_id = ? ORDER BY created_at DESC`,
     )
-    .all(req.shop.id);
+    .all(todayISO(), req.shop.id);
   res.render('shop/cars', { cars });
 });
 
@@ -232,6 +233,65 @@ router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), (req, res) => {
     ? `Car details saved, but ${rejected.length} photo(s) were not added: a car can have at most ${MAX_PHOTOS} photos.`
     : 'Car details saved.');
   res.redirect(303, '/shop/cars');
+});
+
+// ---------- Blocked dates (service, repairs...) ----------
+
+const BLOCK_REASONS = ['Service', 'Repair', 'Maintenance', 'Private use', 'Other'];
+
+function blocksPage(res, car, { form = {}, error = null, status = 200 } = {}) {
+  const blocks = db.prepare('SELECT * FROM car_blocks WHERE car_id = ? AND end_date >= ? ORDER BY start_date').all(car.id, todayISO());
+  const bookings = db.prepare(
+    `SELECT reference, customer_name, pickup_date, return_date FROM bookings
+     WHERE car_id = ? AND status = 'confirmed' AND return_date >= ? ORDER BY pickup_date LIMIT 20`,
+  ).all(car.id, todayISO());
+  res.status(status).render('shop/car-blocks', { car, blocks, bookings, form, error, reasons: BLOCK_REASONS, today: todayISO() });
+}
+
+router.get('/cars/:id/blocks', (req, res) => {
+  const car = ownCar(req);
+  if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car does not belong to your shop.' });
+  blocksPage(res, car);
+});
+
+router.post('/cars/:id/blocks', (req, res) => {
+  const car = ownCar(req);
+  if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car does not belong to your shop.' });
+  const form = {
+    start_date: String(req.body.start_date || ''),
+    end_date: String(req.body.end_date || req.body.start_date || ''),
+    reason: BLOCK_REASONS.includes(req.body.reason) ? req.body.reason : 'Other',
+    note: String(req.body.note || '').trim().slice(0, 100),
+  };
+  const nextDay = (d) => new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10);
+  let error = (!isISODate(form.start_date) || !isISODate(form.end_date)) && 'Please choose the first and last day the car is unavailable.';
+  error = error || (form.end_date < form.start_date && 'The last day cannot be before the first day.')
+    || (form.start_date < todayISO() && 'The first day cannot be in the past.');
+  if (!error) {
+    // A confirmed booking already uses some of these days: the shop must deal with it first.
+    const clash = db.prepare(
+      `SELECT reference, customer_name, pickup_date, return_date FROM bookings
+       WHERE car_id = ? AND status IN ('confirmed', 'pending_payment') AND pickup_date < ? AND return_date > ? LIMIT 1`,
+    ).get(car.id, nextDay(form.end_date), form.start_date);
+    if (clash) {
+      error = `Booking ${clash.reference} (${clash.customer_name}) already has this car from ${clash.pickup_date} to ${clash.return_date}. `
+        + 'Choose other days, or cancel that booking first from the Bookings tab.';
+    }
+  }
+  if (error) return blocksPage(res, car, { form, error, status: 400 });
+  db.prepare('INSERT INTO car_blocks (car_id, start_date, end_date, reason) VALUES (?, ?, ?, ?)')
+    .run(car.id, form.start_date, form.end_date, [form.reason, form.note].filter(Boolean).join(': '));
+  res.flash('success', `${car.make} ${car.model} is blocked from ${form.start_date} to ${form.end_date}. Customers cannot book it on these days.`);
+  res.redirect(303, `/shop/cars/${car.id}/blocks`);
+});
+
+router.post('/cars/:id/blocks/:blockId/delete', (req, res) => {
+  const car = ownCar(req);
+  if (car) {
+    db.prepare('DELETE FROM car_blocks WHERE id = ? AND car_id = ?').run(Number(req.params.blockId), car.id);
+    res.flash('success', 'Those days are open for booking again.');
+  }
+  res.redirect(303, car ? `/shop/cars/${car.id}/blocks` : '/shop/cars');
 });
 
 router.post('/cars/:id/toggle', (req, res) => {

@@ -178,6 +178,17 @@ CREATE TABLE IF NOT EXISTS reviews (
 CREATE INDEX IF NOT EXISTS idx_reviews_car ON reviews(car_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_shop ON reviews(shop_id);
 
+-- Days a shop takes a car off the road (service, repairs...). end_date is the last unavailable day.
+CREATE TABLE IF NOT EXISTS car_blocks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  car_id INTEGER NOT NULL REFERENCES cars(id) ON DELETE CASCADE,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS car_blocks_car ON car_blocks (car_id, end_date);
+
 -- Driving licence / ID photos uploaded by the customer. Stored privately, never publicly served.
 CREATE TABLE IF NOT EXISTS booking_documents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

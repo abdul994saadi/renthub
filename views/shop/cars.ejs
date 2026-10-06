@@ -15,9 +15,11 @@
           <% if (!car.is_active) { %><span class="chip chip-red">Hidden</span><% } %>
           <div class="small muted"><%= car.category %> · <%= car.transmission %> · <%= car.seats %> seats</div>
           <div class="small"><strong><%= money(car.daily_price) %></strong>/day · <%= car.booking_count %> active booking<%= car.booking_count === 1 ? '' : 's' %></div>
+          <% if (car.next_block) { %><div class="small"><span class="chip chip-amber">Blocked</span> next: <%= car.next_block %></div><% } %>
         </div>
         <div class="car-row-actions">
           <a class="btn btn-small btn-outline" href="/shop/cars/<%= car.id %>/edit">Edit</a>
+          <a class="btn btn-small btn-outline" href="/shop/cars/<%= car.id %>/blocks">Block dates</a>
           <% if (car.is_active) { %><a class="btn btn-small btn-ghost" href="/cars/<%= car.id %>">View</a><% } %>
           <form method="post" action="/shop/cars/<%= car.id %>/toggle"><button class="btn btn-small btn-ghost"><%= car.is_active ? 'Hide' : 'Show' %></button></form>
           <form method="post" action="/shop/cars/<%= car.id %>/delete" onsubmit="return confirm('Delete this car permanently?')"><button class="btn btn-small btn-danger">Delete</button></form>
