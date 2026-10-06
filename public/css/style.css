@@ -91,12 +91,6 @@ img, svg { max-width: 100%; display: block; }
 .footer-wa { display: inline-flex; align-items: center; gap: 6px; color: #128c4a; font-weight: 600; padding: 6px 12px; border: 1px solid #25d366; border-radius: 99px; }
 .footer-wa:hover { background: #25d366; color: #0b2e17; text-decoration: none; }
 @media (prefers-color-scheme: dark) { .footer-wa { color: #4ade80; } }
-/* Floating WhatsApp bubble for customer questions */
-.wa-fab { position: fixed; z-index: 20; right: calc(18px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom));
-  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
-  background: #25d366; color: #fff; box-shadow: 0 4px 14px rgb(0 0 0 / 0.25); transition: transform 0.15s; }
-.wa-fab:hover { transform: scale(1.07); text-decoration: none; }
-@media print { .wa-fab { display: none; } }
 
 /* Buttons */
 .btn {
