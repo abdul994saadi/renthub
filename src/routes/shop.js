@@ -11,6 +11,7 @@ const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
 const { shopExtras, withExtras } = require('../pricing');
 const documents = require('../documents');
+const { optimizeUploads } = require('../images');
 const commission = require('../commission');
 
 // Booking rows for lists: chosen extras and uploaded driver documents.
@@ -178,7 +179,7 @@ router.get('/cars/new', (req, res) => {
   res.render('shop/car-form', { ...carFormOptions, car: { doors: 4, seats: 5, mileage_policy: 'Unlimited', features: '' }, photos: [], error: null });
 });
 
-router.post('/cars', upload.array('photos', MAX_PHOTOS), (req, res) => {
+router.post('/cars', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const car = readCarForm(req.body);
   const error = validateCar(car);
   if (error) {
@@ -193,6 +194,7 @@ router.post('/cars', upload.array('photos', MAX_PHOTOS), (req, res) => {
     req.shop.id, car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
     car.daily_price, car.deposit, car.mileage_policy, car.features, car.description,
   );
+  await optimizeUploads(req.files);
   updateCarPhotos(Number(carId), { added: (req.files || []).map((f) => f.filename) });
   res.flash('success', `${car.make} ${car.model} is now listed and can be booked.`);
   res.redirect(303, '/shop/cars');
@@ -204,7 +206,7 @@ router.get('/cars/:id/edit', (req, res) => {
   res.render('shop/car-form', { ...carFormOptions, car, photos: carPhotos(car.id), error: null });
 });
 
-router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), (req, res) => {
+router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const existing = ownCar(req);
   if (!existing) {
     removeUploads(req.files);
@@ -224,6 +226,7 @@ router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), (req, res) => {
     car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
     car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, existing.id,
   );
+  await optimizeUploads(req.files);
   const rejected = updateCarPhotos(existing.id, {
     added: (req.files || []).map((f) => f.filename),
     removeIds: [].concat(req.body.remove_photo || []),

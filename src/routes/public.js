@@ -51,6 +51,8 @@ router.get('/', (req, res) => {
   res.render('home', { featured, cities: cities(), categories: CATEGORIES });
 });
 
+const PER_PAGE = 24;
+
 router.get('/cars', (req, res) => {
   const f = {
     q: String(req.query.q || '').trim(),
@@ -82,7 +84,21 @@ router.get('/cars', (req, res) => {
   const dateError = f.pickup || f.ret ? validateDates(f.pickup, f.ret) : null;
   if (f.pickup && f.ret && !dateError) cars = cars.filter((c) => isCarAvailable(c.id, f.pickup, f.ret));
 
-  res.render('cars', { cars, f, dateError, cities: cities(), categories: CATEGORIES, transmissions: TRANSMISSIONS });
+  // Show the results PER_PAGE at a time, so the page stays fast with many cars.
+  const total = cars.length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(req.query.page, 10) || 1));
+  cars = cars.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const pageUrl = (n) => {
+    const params = new URLSearchParams(Object.entries(req.query).filter(([k, v]) => k !== 'page' && typeof v === 'string' && v));
+    if (n > 1) params.set('page', n);
+    const qs = params.toString();
+    return `/cars${qs ? `?${qs}` : ''}`;
+  };
+
+  res.render('cars', {
+    cars, total, page, pages, pageUrl, f, dateError, cities: cities(), categories: CATEGORIES, transmissions: TRANSMISSIONS,
+  });
 });
 
 router.get('/cars/:id', (req, res) => {
