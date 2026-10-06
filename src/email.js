@@ -70,18 +70,31 @@ function htmlToText(html) {
 
 // Every email is stored in the `emails` table. Without SMTP settings it is only
 // stored, and can be read on the /dev/outbox page.
+// Returns true when sent (or saved to the test inbox when SMTP is not set up), false when sending failed.
 async function sendEmail({ to, subject, html, replyTo }) {
   const { lastInsertRowid } = db
     .prepare('INSERT INTO emails (to_address, subject, html) VALUES (?, ?, ?)')
     .run(to, subject, html);
-  if (!transport) return;
+  if (!transport) return true;
   try {
     await transport.sendMail({ from: FROM, to, subject, html, text: htmlToText(html), ...(replyTo && { replyTo }) });
     db.prepare('UPDATE emails SET delivered = 1 WHERE id = ?').run(lastInsertRowid);
+    return true;
   } catch (err) {
     console.error(`Email to ${to} failed:`, err.message);
     db.prepare('UPDATE emails SET error = ? WHERE id = ?').run(err.message, lastInsertRowid);
+    return false;
   }
+}
+
+function sendVerificationCode(to, code) {
+  return sendEmail({
+    to,
+    subject: `${code} is your RentHub booking code`,
+    html: layout('Confirm your email', `<p style="font-size:14px">Enter this code on RentHub to confirm your booking:</p>
+      <p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${esc(code)}</p>
+      <p style="font-size:13px;color:#6b7280">The code is valid for 15 minutes. If you did not try to book a car on RentHub, you can ignore this email.</p>`),
+  });
 }
 
 const esc = (s) =>
@@ -313,4 +326,4 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { sendPickupReminder, sendReturnReminder, sendReviewRequest, htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
+module.exports = { sendVerificationCode, sendPickupReminder, sendReturnReminder, sendReviewRequest, htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };

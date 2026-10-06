@@ -47,6 +47,28 @@
     out.hidden = false;
   }
 
+  // Remember the customer's name, email and phone on this device for their next booking.
+  const KEY = 'renthub_customer';
+  const fields = ['name', 'email', 'phone'].map((n) => form.elements[n]).filter(Boolean);
+  const note = form.querySelector('[data-remembered]');
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved && fields.every((el) => !el.value)) {
+      fields.forEach((el) => { el.value = saved[el.name] || ''; });
+      if (note) note.hidden = false;
+    }
+  } catch { /* storage unavailable */ }
+  form.addEventListener('submit', () => {
+    try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(fields.map((el) => [el.name, el.value.trim()])))); } catch { /* ignore */ }
+  });
+  form.querySelector('[data-forget]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+    fields.forEach((el) => { el.value = ''; });
+    if (note) note.hidden = true;
+    fields[0]?.focus();
+  });
+
   form.addEventListener('change', update);
   update();
   window.renthubBookingUpdate = update;

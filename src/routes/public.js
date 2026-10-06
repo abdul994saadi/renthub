@@ -4,6 +4,7 @@ const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO
 const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
 const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
+const verify = require('../verify');
 const { carPhotos } = require('../photos');
 const documents = require('../documents');
 const reviews = require('../reviews');
@@ -144,6 +145,7 @@ function validateBooking(d, car) {
     || (!d.licence && 'Please confirm you hold a valid driving licence.')
     || (d.pickupMethod === 'delivery' && d.deliveryAddress.length < 5 && 'Please enter the delivery address.')
     || (!isCarAvailable(car.id, d.pickup, d.ret) && 'Sorry, this car is already booked for some of those dates. Please choose other dates.')
+    || (payAtPickup && verify.bookingLimitError(d.email, d.phone))
     || null
   );
 }
@@ -152,8 +154,17 @@ function renderCarWithError(res, car, d, error) {
   renderCarPage(res, car, { form: { ...d, return: d.ret }, error, status: 400 });
 }
 
+// Pay-at-pick-up bookings from an email not yet verified on this device need a code sent by email.
+const needsCode = (req, d) => payAtPickup && verify.needsCode(req, d.email);
+
+function renderReview(res, { car, d, q, notice = null, verifying = false, codeError = null }) {
+  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
+  if (verifying && !notice && !codeError) notice = `We emailed a 6-digit code to ${d.email}. Enter it at the bottom of this page to confirm your booking.`;
+  res.render('review', { car, shop, d, q, notice, verifying, codeError });
+}
+
 // Step 1: check the details and show a summary to review.
-router.post('/cars/:id/book', (req, res) => {
+router.post('/cars/:id/book', async (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
   const d = readBookingForm(req.body);
@@ -161,8 +172,25 @@ router.post('/cars/:id/book', (req, res) => {
   if (error) return renderCarWithError(res, car, d, error);
   const q = quoteFor(car, d);
   if (q.promoError) return renderCarWithError(res, car, d, q.promoError);
-  const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-  res.render('review', { car, shop, d, q, notice: null });
+  if (!needsCode(req, d)) return renderReview(res, { car, d, q });
+  const sent = await verify.issueCode(d.email);
+  renderReview(res, { car, d, q, verifying: true, codeError: sent.ok ? null : sent.error });
+});
+
+// The customer asked for a new email code on the review page.
+router.post('/cars/:id/resend-code', async (req, res) => {
+  const car = activeCar(req.params.id);
+  if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
+  const d = readBookingForm(req.body);
+  const error = validateBooking(d, car);
+  if (error) return renderCarWithError(res, car, d, error);
+  const q = quoteFor(car, d);
+  const sent = await verify.issueCode(d.email);
+  renderReview(res, {
+    car, d, q, verifying: true,
+    codeError: sent.ok ? null : sent.error,
+    notice: sent.ok ? (sent.recent ? 'A code was sent less than a minute ago. Please check your inbox and junk folder.' : `A new code was sent to ${d.email}.`) : null,
+  });
 });
 
 // Step 2: the customer confirmed the summary. Either confirm the booking (pay at
@@ -177,8 +205,12 @@ router.post('/cars/:id/confirm', async (req, res) => {
   if (q.promoError) return renderCarWithError(res, car, d, q.promoError);
   // The price changed since the customer reviewed it (e.g. the shop edited a fee): show it again.
   if (Math.abs(Number(req.body.expected_total) - q.total) > 0.001) {
-    const shop = db.prepare('SELECT * FROM shops WHERE id = ?').get(car.shop_id);
-    return res.render('review', { car, shop, d, q, notice: 'The price was updated. Please check the new total and confirm again.' });
+    return renderReview(res, { car, d, q, verifying: needsCode(req, d), notice: 'The price was updated. Please check the new total and confirm again.' });
+  }
+  if (needsCode(req, d)) {
+    const check = verify.checkCode(d.email, req.body.code);
+    if (!check.ok) return renderReview(res, { car, d, q, verifying: true, codeError: check.error });
+    verify.rememberVerified(req, res, d.email);
   }
 
   const booking = createBooking(car, d, q, { payAtPickup });

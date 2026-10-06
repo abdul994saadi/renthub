@@ -8,6 +8,7 @@ const { promoUses } = require('../pricing');
 const scheduler = require('../scheduler');
 const documents = require('../documents');
 const commission = require('../commission');
+const verify = require('../verify');
 
 const router = express.Router();
 
@@ -209,7 +210,19 @@ router.post('/promos/:id/:action', (req, res) => {
 // ---------- Settings ----------
 
 router.get('/settings', (req, res) => {
-  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null });
+  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null, verify });
+});
+
+router.post('/settings/protection', (req, res) => {
+  const max = Number(req.body.max_open_bookings);
+  if (!(Number.isInteger(max) && max >= 0 && max <= 50)) {
+    res.flash('error', 'Enter a number of bookings between 0 and 50 (0 means no limit).');
+    return res.redirect(303, '/admin/settings');
+  }
+  setSetting('verify_email', req.body.verify_email === 'on' ? '1' : '0');
+  setSetting('max_open_bookings', String(max));
+  res.flash('success', 'Booking protection saved.');
+  res.redirect(303, '/admin/settings');
 });
 
 router.post('/settings/whatsapp', (req, res) => {
@@ -227,7 +240,7 @@ router.post('/settings/commission', (req, res) => {
   const percent = commission.parsePercent(req.body.commission_percent);
   if (percent === null || Number.isNaN(percent)) {
     return res.status(400).render('admin/settings', {
-      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null,
+      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null, verify,
       commissionError: 'Please enter a commission between 0 and 100.',
     });
   }
@@ -239,7 +252,7 @@ router.post('/settings/commission', (req, res) => {
 router.post('/settings', (req, res) => {
   const rate = Number(String(req.body.lbp_rate || '').replace(/[,\s]/g, ''));
   if (!(rate >= 0 && rate < 10_000_000)) {
-    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
+    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, verify, error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
   }
   setSetting('lbp_rate', rate);
   res.flash('success', rate ? `Exchange rate saved: 1 USD = ${new Intl.NumberFormat('en-US').format(rate)} LBP.` : 'LBP prices are now hidden.');

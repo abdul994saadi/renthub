@@ -70,6 +70,9 @@ img, svg { max-width: 100%; display: block; }
 .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0 16px; }
 .section-head h2 { margin: 0; }
 .section-title { margin-top: 32px; }
+.verify-box { flex-basis: 100%; display: grid; gap: 8px; margin-bottom: 8px; }
+.verify-box input { font-size: 22px; letter-spacing: 6px; max-width: 220px; }
+.resend-form { margin-top: 8px; }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; }
 .muted { color: var(--muted); }
 .small { font-size: 0.875rem; }
@@ -257,7 +260,7 @@ legend { font-weight: 600; padding: 0 6px; }
 .summary td:last-child { text-align: right; font-weight: 600; }
 .summary tr.discount td { color: var(--green); }
 .summary tr.total td { font-size: 1.15rem; font-weight: 700; border-bottom: 2px solid var(--text); }
-.actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .actions .btn-big { flex: 1; }
 .confirm { text-align: center; }
 .confirm .summary, .confirm h2, .confirm p:not(.muted) { text-align: left; }

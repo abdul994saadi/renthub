@@ -1,6 +1,14 @@
 <%- include('../partials/head', { title: 'Settings' }) %>
 <div class="wrap section">
   <%- include('../partials/admin-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/admin/settings/protection" style="margin-bottom:20px">
+    <h2>Protection against fake bookings</h2>
+    <p class="muted small">Applies while customers pay at pick-up. Online card payments do not need it.</p>
+    <label class="check"><input type="checkbox" name="verify_email" <%= verify.verifyEmailRequired() ? 'checked' : '' %>> <span>Customers confirm their email with a 6-digit code before booking<br><span class="muted small">Asked only once per email on each phone or computer.</span></span></label>
+    <label>Maximum upcoming unpaid bookings per customer (email or phone)<input name="max_open_bookings" type="number" min="0" max="50" value="<%= verify.maxOpenBookings() %>"></label>
+    <p class="muted small">0 means no limit.</p>
+    <button class="btn" type="submit">Save protection</button>
+  </form>
   <form class="card pad form narrow-form" method="post" action="/admin/settings/whatsapp" style="margin-bottom:20px">
     <h2>WhatsApp for customer questions</h2>
     <p class="muted small">Shown as a "WhatsApp us" button at the bottom of every page. Leave empty to hide it.</p>

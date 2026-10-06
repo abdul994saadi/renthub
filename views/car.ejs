@@ -105,6 +105,7 @@
 
         <div class="estimate" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" data-lbp-rate="<%= CURRENCY === 'USD' ? lbpRate() : 0 %>" hidden></div>
 
+        <p class="muted small" data-remembered hidden>Your details from last time are filled in. <a href="#" data-forget>Not you? Clear them</a></p>
         <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" value="<%= form.email || '' %>"></label>
         <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>"></label>

@@ -178,6 +178,17 @@ CREATE TABLE IF NOT EXISTS reviews (
 CREATE INDEX IF NOT EXISTS idx_reviews_car ON reviews(car_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_shop ON reviews(shop_id);
 
+-- One-time codes that confirm a customer's email before a pay-at-pick-up booking.
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS email_codes_email ON email_codes (email, created_at);
+
 -- Days a shop takes a car off the road (service, repairs...). end_date is the last unavailable day.
 CREATE TABLE IF NOT EXISTS car_blocks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
