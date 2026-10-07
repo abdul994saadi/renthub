@@ -115,6 +115,7 @@ addColumn('bookings', 'pickup_reminder_sent_at', 'TEXT');
 addColumn('bookings', 'return_reminder_sent_at', 'TEXT');
 addColumn('bookings', 'review_requested_at', 'TEXT');
 addColumn('bookings', 'commission_percent', 'REAL');
+addColumn('cars', 'min_days', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('shops', 'commission_percent', 'REAL');
 
 db.exec(`

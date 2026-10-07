@@ -7,6 +7,8 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads
 const TIMEZONE = process.env.TIMEZONE || 'Asia/Beirut';
 // Customers can cancel for a full refund until this many hours before pick-up.
 const FREE_CANCELLATION_HOURS = Number(process.env.FREE_CANCELLATION_HOURS || 24);
+// Bookings must be made at least this many hours before pick-up.
+const MIN_NOTICE_HOURS = Number(process.env.MIN_NOTICE_HOURS || 12);
 
 // Pick-up times offered on the booking form, every 30 minutes from 07:00 to 21:00.
 const PICKUP_TIMES = Array.from({ length: 29 }, (_, i) => {
@@ -108,6 +110,6 @@ function carFeatures(car) {
 const CITIES = ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Byblos', 'Zahle', 'Baalbek', 'Jounieh', 'Batrun', 'Aley', 'Bhamdoun'];
 
 module.exports = {
-  CITIES, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
+  CITIES, MIN_NOTICE_HOURS, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
   money, lbp, lbpRate, supportWhatsapp, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };

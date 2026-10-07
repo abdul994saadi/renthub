@@ -1,6 +1,6 @@
 const express = require('express');
 const { db } = require('../db');
-const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, validateDates, todayISO, localToDate, isISODate } = require('../helpers');
+const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, MIN_NOTICE_HOURS, validateDates, todayISO, localToDate, isISODate, daysBetween } = require('../helpers');
 const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
 const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
@@ -83,7 +83,10 @@ router.get('/cars', (req, res) => {
   let cars = db.prepare(`${CAR_WITH_SHOP} WHERE ${where.join(' AND ')} ORDER BY ${orderBy}`).all(...params);
 
   const dateError = f.pickup || f.ret ? validateDates(f.pickup, f.ret) : null;
-  if (f.pickup && f.ret && !dateError) cars = cars.filter((c) => isCarAvailable(c.id, f.pickup, f.ret));
+  if (f.pickup && f.ret && !dateError) {
+    const days = daysBetween(f.pickup, f.ret);
+    cars = cars.filter((c) => days >= (c.min_days || 1) && isCarAvailable(c.id, f.pickup, f.ret));
+  }
 
   // Show the results PER_PAGE at a time, so the page stays fast with many cars.
   const total = cars.length;
@@ -139,6 +142,10 @@ function validateBooking(d, car) {
     validateDates(d.pickup, d.ret)
     || (!PICKUP_TIMES.includes(d.pickupTime) && 'Please choose a pick-up time.')
     || (localToDate(d.pickup, d.pickupTime) <= new Date() && 'That pick-up time has already passed. Please choose a later time.')
+    || (localToDate(d.pickup, d.pickupTime) < new Date(Date.now() + MIN_NOTICE_HOURS * 3600 * 1000)
+      && `Bookings must be made at least ${MIN_NOTICE_HOURS} hours before pick-up. Please choose a later pick-up date or time.`)
+    || (daysBetween(d.pickup, d.ret) < (car.min_days || 1)
+      && `This car can be rented for a minimum of ${car.min_days} days. Please choose a return date at least ${car.min_days} days after pick-up.`)
     || (!d.name && 'Please enter your full name.')
     || (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email) && 'Please enter a valid email address.')
     || (d.phone.replace(/\D/g, '').length < 7 && 'Please enter a valid phone number.')

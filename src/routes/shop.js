@@ -151,6 +151,7 @@ function readCarForm(body) {
     doors: Number(body.doors) || 4,
     daily_price: Number(body.daily_price),
     deposit: Number(body.deposit) || 0,
+    min_days: Number(body.min_days) || 1,
     mileage_policy: String(body.mileage_policy || 'Unlimited').trim() || 'Unlimited',
     features: [...new Set(features.map((f) => f.trim()).filter(Boolean))].join(', '),
     description: String(body.description || '').trim(),
@@ -169,6 +170,7 @@ function validateCar(c) {
     || (!(c.seats >= 1 && c.seats <= 20) && 'Please enter the number of seats.')
     || (!(c.daily_price > 0) && 'Please enter a daily price above zero.')
     || (c.deposit < 0 && 'The deposit cannot be negative.')
+    || (!(Number.isInteger(c.min_days) && c.min_days >= 1 && c.min_days <= 60) && 'The minimum rental must be between 1 and 60 days.')
     || null
   );
 }
@@ -188,11 +190,11 @@ router.post('/cars', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   }
   const { lastInsertRowid: carId } = db.prepare(
     `INSERT INTO cars (shop_id, make, model, year, category, transmission, fuel, seats, doors, daily_price, deposit,
-       mileage_policy, features, description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       mileage_policy, features, description, min_days)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     req.shop.id, car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
-    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description,
+    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, car.min_days,
   );
   await optimizeUploads(req.files);
   updateCarPhotos(Number(carId), { added: (req.files || []).map((f) => f.filename) });
@@ -220,11 +222,11 @@ router.post('/cars/:id', upload.array('photos', MAX_PHOTOS), async (req, res) =>
   }
   db.prepare(
     `UPDATE cars SET make = ?, model = ?, year = ?, category = ?, transmission = ?, fuel = ?, seats = ?, doors = ?,
-       daily_price = ?, deposit = ?, mileage_policy = ?, features = ?, description = ?
+       daily_price = ?, deposit = ?, mileage_policy = ?, features = ?, description = ?, min_days = ?
      WHERE id = ?`,
   ).run(
     car.make, car.model, car.year, car.category, car.transmission, car.fuel, car.seats, car.doors,
-    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, existing.id,
+    car.daily_price, car.deposit, car.mileage_policy, car.features, car.description, car.min_days, existing.id,
   );
   await optimizeUploads(req.files);
   const rejected = updateCarPhotos(existing.id, {

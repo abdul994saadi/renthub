@@ -7,6 +7,8 @@
   const ranges = JSON.parse(root.dataset.booked || '[]');
   const pickup = document.querySelector('[data-pickup]');
   const ret = document.querySelector('[data-return]');
+  const minDays = Number(document.querySelector('[data-min-days]')?.dataset.minDays) || 1;
+  const hint = document.querySelector('.booking-rules');
 
   const iso = (d) => d.toISOString().slice(0, 10);
   const addDays = (s, n) => { const d = new Date(`${s}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
@@ -49,6 +51,11 @@
     const btn = e.target.closest('[data-day]');
     if (!btn) return;
     const day = btn.dataset.day;
+    if (pickup.value && !ret.value && day > pickup.value && day < addDays(pickup.value, minDays)) {
+      // Too short for this car's minimum rental: keep the pick-up and point out the rule.
+      if (hint) { hint.classList.remove('flash'); void hint.offsetWidth; hint.classList.add('flash'); }
+      return;
+    }
     if (pickup.value && !ret.value && day > pickup.value && rangeFree(pickup.value, day)) {
       ret.value = day;
     } else {

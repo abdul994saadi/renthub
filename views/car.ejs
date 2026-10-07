@@ -19,6 +19,7 @@
           <div><span class="muted small">Doors</span><strong><%= car.doors %></strong></div>
           <div><span class="muted small">Mileage</span><strong><%= car.mileage_policy %></strong></div>
           <div><span class="muted small">Deposit</span><strong><%= car.deposit ? money(car.deposit) : 'None' %></strong></div>
+          <div><span class="muted small">Minimum rental</span><strong><%= car.min_days || 1 %> day<%= car.min_days > 1 ? 's' : '' %></strong></div>
         </div>
         <% if (car.description) { %><p class="prewrap"><%= car.description %></p><% } %>
         <% const feats = carFeatures(car); if (feats.length) { %>
@@ -70,7 +71,8 @@
         <% if (lbp(car.daily_price)) { %><div class="muted small lbp">≈ <%= lbp(car.daily_price) %>/day</div><% } %>
         <h2 class="h3">Book this car</h2>
         <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
-        <div class="row-3 booking-dates">
+        <p class="muted small booking-rules"><% if (car.min_days > 1) { %>Minimum rental: <strong><%= car.min_days %> days</strong>. <% } %>Book at least <%= MIN_NOTICE_HOURS %> hours before pick-up.</p>
+        <div class="row-3 booking-dates" data-min-days="<%= car.min_days || 1 %>">
           <label>Pick-up date<input type="date" name="pickup" required min="<%= todayISO() %>" value="<%= form.pickup %>" data-pickup></label>
           <label>Pick-up time
             <select name="pickup_time" required>

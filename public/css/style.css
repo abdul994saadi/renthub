@@ -73,6 +73,9 @@ img, svg { max-width: 100%; display: block; }
 .verify-box { flex-basis: 100%; display: grid; gap: 8px; margin-bottom: 8px; }
 .verify-box input { font-size: 22px; letter-spacing: 6px; max-width: 220px; }
 .resend-form { margin-top: 8px; }
+.booking-rules { margin: 0 0 8px; }
+.booking-rules.flash { animation: rule-flash 1.2s; }
+@keyframes rule-flash { 0%, 60% { color: var(--red); } }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; }
 .muted { color: var(--muted); }
 .small { font-size: 0.875rem; }

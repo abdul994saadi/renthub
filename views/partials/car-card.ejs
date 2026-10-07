@@ -4,7 +4,7 @@
     <h3><%= car.make %> <%= car.model %> <span class="muted"><%= car.year %></span></h3>
     <% if (car.review_count) { %><div class="small"><%- include('stars', { value: car.rating, count: car.review_count }) %></div><% } %>
     <ul class="specs">
-      <li><%= car.transmission %></li><li><%= car.seats %> seats</li><li><%= car.fuel %></li>
+      <li><%= car.transmission %></li><li><%= car.seats %> seats</li><li><%= car.fuel %></li><% if (car.min_days > 1) { %><li>Min. <%= car.min_days %> days</li><% } %>
     </ul>
     <div class="car-card-foot">
       <span class="muted small"><%= car.shop_name ? car.shop_name + (car.shop_city ? ' · ' + car.shop_city : '') : '' %><% if (car.shop_verified) { %> <span class="verified-tick" title="Verified shop">✓</span><% } %></span>

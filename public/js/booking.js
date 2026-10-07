@@ -17,12 +17,15 @@
     return `<div class="est-row"><span>${esc(label)}</span><span>${fmt.format(amount)}</span></div>`;
   }
 
+  // The shop's minimum rental for this car: the return date is at least this many days after pick-up.
+  const minDays = Number(form.querySelector('[data-min-days]')?.dataset.minDays) || 1;
+
   function update() {
     if (pickup.value) {
       const next = new Date(pickup.value);
-      next.setUTCDate(next.getUTCDate() + 1);
+      next.setUTCDate(next.getUTCDate() + minDays);
       ret.min = next.toISOString().slice(0, 10);
-      if (ret.value && ret.value <= pickup.value) ret.value = ret.min;
+      if (ret.value && ret.value < ret.min) ret.value = ret.min;
     }
     const method = form.querySelector('input[name=pickup_method]:checked');
     form.querySelectorAll('[data-show-for]').forEach((el) => { el.hidden = !method || method.value !== el.dataset.showFor; });
