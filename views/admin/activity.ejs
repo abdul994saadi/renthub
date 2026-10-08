@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title: 'Activity' }) %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <p class="muted">Everything changed from the owner dashboard, newest first (last 300).</p>
+  <% if (!log.length) { %><div class="empty card">No activity yet.</div><% } %>
+  <div class="card pad">
+    <ul class="log-list">
+      <% log.forEach(l => { %>
+        <li>
+          <span class="muted small"><%= l.created_at.slice(0, 16) %> UTC</span>
+          <strong><%= l.action %></strong><% if (l.booking_ref) { %> · <a href="/admin/bookings/<%= l.booking_id %>"><%= l.booking_ref %></a><% } %>
+          <% if (l.details) { %><div class="small"><%= l.details %></div><% } %>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+</div>
+<%- include('../partials/foot') %>

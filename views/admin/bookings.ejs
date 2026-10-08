@@ -6,12 +6,15 @@
     <label>Status
       <select name="status">
         <option value="">All</option>
-        <% ['confirmed', 'completed', 'cancelled'].forEach(s => { %><option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s %></option><% }) %>
+        <% [['confirmed', 'Confirmed'], ['completed', 'Completed'], ['no_show', 'No-show'], ['cancelled', 'Cancelled'], ['test', 'Test / fake']].forEach(([v, l]) => { %><option value="<%= v %>" <%= status === v ? 'selected' : '' %>><%= l %></option><% }) %>
       </select>
     </label>
     <div class="filter-actions"><button class="btn" type="submit">Filter</button></div>
   </form>
-  <p class="muted"><%= bookings.length %> booking<%= bookings.length === 1 ? '' : 's' %><%= bookings.length === 200 ? ' (latest 200)' : '' %></p>
+  <div class="section-head">
+    <p class="muted"><%= bookings.length %> booking<%= bookings.length === 1 ? '' : 's' %><%= bookings.length === 200 ? ' (latest 200; the CSV has all of them)' : '' %>. Tap a booking to manage it.</p>
+    <a class="btn btn-small btn-outline" href="/admin/bookings.csv?<%= new URLSearchParams(Object.entries({ status, q }).filter(([, v]) => v)).toString() %>">Download CSV</a>
+  </div>
   <% if (!bookings.length) { %><div class="empty card">No bookings found.</div><% } %>
   <%- include('bookings-table', { bookings }) %>
 </div>

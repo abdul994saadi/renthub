@@ -2,7 +2,7 @@
   <div><span class="muted small">Owner dashboard</span><strong>RentHub</strong></div>
 </div>
 <nav class="tabs">
-  <% [['/admin/', 'Overview'], ['/admin/shops', 'Shops'], ['/admin/bookings', 'Bookings'], ['/admin/promos', 'Promo codes'], ['/admin/reviews', 'Reviews'], ['/admin/settings', 'Settings'], ['/admin/email', 'Email']].forEach(([href, label]) => { %>
+  <% [['/admin/', 'Overview'], ['/admin/shops', 'Shops'], ['/admin/bookings', 'Bookings'], ['/admin/promos', 'Promo codes'], ['/admin/reviews', 'Reviews'], ['/admin/settings', 'Settings'], ['/admin/email', 'Email'], ['/admin/activity', 'Activity']].forEach(([href, label]) => { %>
     <a href="<%= href %>" class="<%= (href === '/admin/' ? adminPath === '/admin/' : adminPath.startsWith(href)) ? 'active' : '' %>"><%= label %></a>
   <% }) %>
 </nav>

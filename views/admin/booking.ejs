@@ -1,0 +1,102 @@
+<%- include('../partials/head', { title: 'Booking ' + booking.reference }) %>
+<% const b = booking, active = ['confirmed', 'pending_payment'].includes(b.status);
+   const statusLabel = b.status === 'no_show' ? 'no-show' : b.status.replace('_', ' '); %>
+<div class="wrap section">
+  <%- include('../partials/admin-nav') %>
+  <p><a href="/admin/bookings">← All bookings</a></p>
+  <div class="section-head">
+    <h2>Booking <%= b.reference %>
+      <span class="chip chip-<%= b.status === 'confirmed' ? 'blue' : b.status === 'completed' ? 'green' : b.status === 'no_show' ? 'amber' : 'red' %>"><%= statusLabel %></span>
+      <% if (b.is_test) { %><span class="chip chip-amber">test / fake</span><% } %>
+    </h2>
+  </div>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <div class="admin-booking">
+    <div class="card pad">
+      <h3>Details</h3>
+      <dl class="info">
+        <dt>Car</dt><dd><%= car.year %> <%= car.make %> <%= car.model %></dd>
+        <dt>Shop</dt><dd><%= shop.name %> · <%= shop.phone || shop.email %></dd>
+        <dt>Pick-up</dt><dd><%= formatDate(b.pickup_date) %>, <%= formatTime(b.pickup_time) %> (<%= b.pickup_method === 'delivery' ? `delivery to ${b.delivery_address}` : b.pickup_method === 'airport' ? 'airport' : 'at the shop' %>)</dd>
+        <dt>Return by</dt><dd><%= formatDate(b.return_date) %> · <%= b.days %> day<%= b.days === 1 ? '' : 's' %></dd>
+        <dt>Total</dt><dd><strong><%= money(b.total_price) %></strong> · <%= b.payment_status === 'unpaid' ? 'pay at pick-up' : b.payment_status %><%= b.promo_code ? ` · code ${b.promo_code} (−${money(b.discount)})` : '' %></dd>
+        <% if (extras.length) { %><dt>Extras</dt><dd><%= extras.map(e => `${e.name} ${money(e.total)}`).join(', ') %></dd><% } %>
+        <dt>Customer</dt><dd><%= b.customer_name %><br><%= b.customer_email %> · <%= b.customer_phone %></dd>
+        <% if (b.notes) { %><dt>Customer notes</dt><dd class="prewrap"><%= b.notes %></dd><% } %>
+        <% if (documents.length) { %><dt>Documents</dt><dd><% documents.forEach((d, i) => { %><%= i ? ' · ' : '' %><a href="/admin/bookings/<%= b.id %>/documents/<%= d.id %>" target="_blank" rel="noopener"><%= d.kind === 'licence' ? 'Driving licence' : 'ID / passport' %></a><% }) %></dd><% } %>
+        <dt>Booked</dt><dd><%= b.created_at.slice(0, 16) %> UTC</dd>
+        <% if (b.status === 'cancelled') { %><dt>Cancelled</dt><dd>by <%= { customer: 'the customer', shop: 'the shop', admin: 'RentHub (you)' }[b.cancelled_by] || 'the system' %><%= b.cancelled_at ? ` on ${b.cancelled_at.slice(0, 16)} UTC` : '' %></dd><% } %>
+      </dl>
+    </div>
+
+    <div class="card pad">
+      <h3>Private notes</h3>
+      <p class="muted small">Only you see these. Shops and customers never do.</p>
+      <form method="post" action="/admin/bookings/<%= b.id %>/notes" class="form">
+        <textarea name="admin_notes" rows="3" maxlength="2000" placeholder="e.g. Customer called, will be 1 hour late"><%= b.admin_notes %></textarea>
+        <button class="btn btn-small" type="submit">Save notes</button>
+      </form>
+    </div>
+
+    <div class="card pad">
+      <h3>Status</h3>
+      <div class="booking-actions wrap-actions">
+        <% if (b.status === 'confirmed' || b.status === 'no_show') { %><form method="post" action="/admin/bookings/<%= b.id %>/status"><input type="hidden" name="status" value="completed"><button class="btn btn-small btn-outline">Mark completed</button></form><% } %>
+        <% if (b.status === 'confirmed' || b.status === 'completed') { %><form method="post" action="/admin/bookings/<%= b.id %>/status" onsubmit="return confirm('Mark as no-show? The customer did not come. No commission is charged.')"><input type="hidden" name="status" value="no_show"><button class="btn btn-small btn-outline">Mark no-show</button></form><% } %>
+        <% if ((b.status === 'completed' || b.status === 'no_show') && b.return_date >= todayISO()) { %><form method="post" action="/admin/bookings/<%= b.id %>/status"><input type="hidden" name="status" value="confirmed"><button class="btn btn-small btn-ghost">Back to upcoming</button></form><% } %>
+        <% if (b.is_test) { %>
+          <form method="post" action="/admin/bookings/<%= b.id %>/test"><input type="hidden" name="undo" value="1"><button class="btn btn-small btn-ghost">Not a test: restore</button></form>
+        <% } else { %>
+          <form method="post" action="/admin/bookings/<%= b.id %>/test" onsubmit="return confirm('Mark <%= b.reference %> as a test / fake booking? It is cancelled quietly (no messages), its dates are freed and it no longer counts in commission or statistics. You can undo this.')"><button class="btn btn-small btn-ghost">Mark as test / fake</button></form>
+        <% } %>
+      </div>
+      <p class="muted small">No-shows and test bookings carry no commission.</p>
+    </div>
+
+    <% if (active) { %>
+    <div class="card pad">
+      <h3>Cancel this booking</h3>
+      <form method="post" action="/admin/bookings/<%= b.id %>/cancel" class="form" onsubmit="return confirm('Cancel booking <%= b.reference %>?<%= b.payment_status === 'paid' ? ' The customer will be refunded in full.' : '' %>')">
+        <label>Reason (optional, included in the emails)<input name="reason" maxlength="300" placeholder="e.g. The car is no longer available"></label>
+        <label class="check"><input type="checkbox" name="notify_customer" checked> <span>Email the customer</span></label>
+        <label class="check"><input type="checkbox" name="notify_shop" checked> <span>Email the shop</span></label>
+        <% if (b.payment_status === 'paid') { %><p class="small"><strong>Paid online:</strong> the customer is refunded <%= money(b.total_price) %> automatically.</p><% } %>
+        <button class="btn btn-danger" type="submit">Cancel booking</button>
+      </form>
+    </div>
+    <% } %>
+
+    <div class="card pad wide">
+      <h3>Change dates, car or price</h3>
+      <form method="post" action="/admin/bookings/<%= b.id %>/edit" class="form">
+        <div class="row-3">
+          <label>Pick-up date<input type="date" name="pickup_date" required value="<%= form.pickup_date %>"></label>
+          <label>Pick-up time<select name="pickup_time"><% PICKUP_TIMES.forEach(t => { %><option value="<%= t %>" <%= form.pickup_time === t ? 'selected' : '' %>><%= formatTime(t) %></option><% }) %></select></label>
+          <label>Return date<input type="date" name="return_date" required value="<%= form.return_date %>"></label>
+        </div>
+        <label>Car (from <%= shop.name %>)
+          <select name="car_id"><% cars.forEach(c => { %><option value="<%= c.id %>" <%= Number(form.car_id) === c.id ? 'selected' : '' %>><%= c.year %> <%= c.make %> <%= c.model %> · <%= money(c.daily_price) %>/day</option><% }) %></select>
+        </label>
+        <label class="check"><input type="checkbox" name="recalculate" checked data-recalc> <span>Recalculate the price from the dates and car (keeps extras, fees and discount)</span></label>
+        <label data-manual-total hidden>Total price (<%= CURRENCY %>)<input type="number" name="total_price" min="0" step="0.01" value="<%= form.total_price %>" inputmode="decimal"></label>
+        <label class="check"><input type="checkbox" name="notify" checked> <span>Email the customer and the shop the new details</span></label>
+        <button class="btn" type="submit">Save changes</button>
+      </form>
+    </div>
+
+    <div class="card pad">
+      <h3>History</h3>
+      <% if (!log.length) { %><p class="muted small">No changes by you yet.</p><% } %>
+      <ul class="log-list"><% log.forEach(l => { %><li><span class="muted small"><%= l.created_at.slice(0, 16) %> UTC</span> <strong><%= l.action %></strong><% if (l.details) { %><div class="small"><%= l.details %></div><% } %></li><% }) %></ul>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    const box = document.querySelector('[data-recalc]'); const manual = document.querySelector('[data-manual-total]');
+    const sync = () => { manual.hidden = box.checked; };
+    box.addEventListener('change', sync); sync();
+  })();
+</script>
+<%- include('../partials/foot') %>

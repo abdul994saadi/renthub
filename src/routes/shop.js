@@ -327,11 +327,11 @@ router.post('/cars/:id/delete', (req, res) => {
 // ---------- Bookings ----------
 
 router.get('/bookings', (req, res) => {
-  const status = ['confirmed', 'completed', 'cancelled'].includes(req.query.status) ? req.query.status : '';
+  const status = ['confirmed', 'completed', 'cancelled', 'no_show'].includes(req.query.status) ? req.query.status : '';
   const bookings = db
     .prepare(
       `SELECT bookings.*, cars.make, cars.model, cars.year FROM bookings JOIN cars ON cars.id = bookings.car_id
-       WHERE bookings.shop_id = ? AND bookings.status IN ('confirmed', 'completed', 'cancelled')
+       WHERE bookings.shop_id = ? AND bookings.status IN ('confirmed', 'completed', 'cancelled', 'no_show')
          ${status ? 'AND bookings.status = ?' : ''}
        ORDER BY bookings.pickup_date DESC`,
     )
@@ -353,11 +353,18 @@ router.post('/bookings/:id/status', async (req, res) => {
   const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND shop_id = ?').get(Number(req.params.id), req.shop.id);
   const status = req.body.status;
   const back = req.get('referer')?.includes('/shop') ? req.get('referer') : '/shop/bookings';
-  if (!booking || booking.status !== 'confirmed' || !['completed', 'cancelled'].includes(status)) return res.redirect(303, back);
+  if (!booking || booking.status !== 'confirmed' || !['completed', 'cancelled', 'no_show'].includes(status)) return res.redirect(303, back);
 
   if (status === 'completed') {
     db.prepare(`UPDATE bookings SET status = 'completed' WHERE id = ?`).run(booking.id);
     res.flash('success', `Booking ${booking.reference} marked as completed.`);
+    return res.redirect(303, back);
+  }
+  // The customer did not come to pick up the car (only once the pick-up day has arrived). No commission is charged.
+  if (status === 'no_show') {
+    if (booking.pickup_date > todayISO()) return res.redirect(303, back);
+    db.prepare(`UPDATE bookings SET status = 'no_show' WHERE id = ?`).run(booking.id);
+    res.flash('success', `Booking ${booking.reference} marked as a no-show.`);
     return res.redirect(303, back);
   }
 

@@ -9,6 +9,9 @@ const scheduler = require('../scheduler');
 const documents = require('../documents');
 const commission = require('../commission');
 const verify = require('../verify');
+const adminBookings = require('../admin-bookings');
+const { logAdmin, recentLog, bookingLog } = require('../adminlog');
+const { bookingExtras } = require('../pricing');
 
 const router = express.Router();
 
@@ -48,7 +51,7 @@ router.get('/', (req, res) => {
   const recent = db.prepare(
     `SELECT bookings.*, cars.make, cars.model, shops.name AS shop_name FROM bookings
      JOIN cars ON cars.id = bookings.car_id JOIN shops ON shops.id = bookings.shop_id
-     WHERE bookings.status IN ('confirmed', 'completed', 'cancelled')
+     WHERE bookings.status IN ('confirmed', 'completed', 'cancelled', 'no_show')
      ORDER BY bookings.created_at DESC LIMIT 10`,
   ).all();
   const pendingShops = db.prepare('SELECT * FROM shops WHERE verified = 0 AND suspended = 0 ORDER BY created_at DESC LIMIT 5').all();
@@ -114,6 +117,7 @@ router.post('/shops/:id/commission', (req, res) => {
     res.flash('error', 'Enter a commission between 0 and 100, or leave it empty to use the default rate.');
   } else {
     db.prepare('UPDATE shops SET commission_percent = ? WHERE id = ?').run(percent, shop.id);
+    logAdmin('Changed shop commission', { details: `${shop.name}: ${percent === null ? 'default rate' : `${percent}%`}` });
     res.flash('success', percent === null
       ? `${shop.name} now uses the default commission (${commission.defaultPercent()}%).`
       : `${shop.name}'s commission is now ${percent}%. It applies to new bookings.`);
@@ -132,27 +136,137 @@ router.post('/shops/:id/:action', (req, res) => {
   const action = actions[req.params.action];
   if (shop && action) {
     db.prepare(`UPDATE shops SET ${action[0]} = ? WHERE id = ?`).run(action[1], shop.id);
+    logAdmin(`Shop ${req.params.action}`, { details: shop.name });
     res.flash('success', `${shop.name} ${action[2]}.`);
   }
   res.redirect(303, '/admin/shops');
 });
 
-router.get('/bookings', (req, res) => {
-  const status = ['confirmed', 'completed', 'cancelled'].includes(req.query.status) ? req.query.status : '';
+const BOOKING_FILTERS = {
+  confirmed: "bookings.status = 'confirmed' AND bookings.is_test = 0",
+  completed: "bookings.status = 'completed'",
+  no_show: "bookings.status = 'no_show'",
+  cancelled: "bookings.status = 'cancelled' AND bookings.is_test = 0",
+  test: 'bookings.is_test = 1',
+};
+
+function findBookings(req, limit) {
+  const status = BOOKING_FILTERS[req.query.status] ? req.query.status : '';
   const q = String(req.query.q || '').trim();
-  const where = [`bookings.status IN ('confirmed', 'completed', 'cancelled')`];
+  const where = [`bookings.status IN ('confirmed', 'completed', 'cancelled', 'no_show')`];
   const params = [];
-  if (status) { where.push('bookings.status = ?'); params.push(status); }
+  if (status) where.push(BOOKING_FILTERS[status]);
   if (q) {
-    where.push(`(bookings.reference LIKE ? OR bookings.customer_name LIKE ? OR bookings.customer_email LIKE ? OR shops.name LIKE ?)`);
-    params.push(...Array(4).fill(`%${q}%`));
+    where.push(`(bookings.reference LIKE ? OR bookings.customer_name LIKE ? OR bookings.customer_email LIKE ? OR bookings.customer_phone LIKE ? OR shops.name LIKE ?)`);
+    params.push(...Array(5).fill(`%${q}%`));
   }
   const bookings = db.prepare(
-    `SELECT bookings.*, cars.make, cars.model, cars.year, shops.name AS shop_name FROM bookings
-     JOIN cars ON cars.id = bookings.car_id JOIN shops ON shops.id = bookings.shop_id
-     WHERE ${where.join(' AND ')} ORDER BY bookings.created_at DESC LIMIT 200`,
-  ).all(...params).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) }));
-  res.render('admin/bookings', { bookings, status, q });
+    `SELECT bookings.*, cars.make, cars.model, cars.year, shops.name AS shop_name, shops.commission_percent AS shop_commission_percent
+     FROM bookings JOIN cars ON cars.id = bookings.car_id JOIN shops ON shops.id = bookings.shop_id
+     WHERE ${where.join(' AND ')} ORDER BY bookings.created_at DESC LIMIT ?`,
+  ).all(...params, limit);
+  return { bookings, status, q };
+}
+
+router.get('/bookings', (req, res) => {
+  const { bookings, status, q } = findBookings(req, 200);
+  res.render('admin/bookings', { bookings: bookings.map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) })), status, q });
+});
+
+router.get('/bookings.csv', (req, res) => {
+  const { bookings } = findBookings(req, 20000);
+  logAdmin('Downloaded bookings CSV', { details: `${bookings.length} booking(s)${req.query.status ? `, filter ${req.query.status}` : ''}${req.query.q ? `, search "${req.query.q}"` : ''}` });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="renthub-bookings-${todayISO()}.csv"`);
+  res.send(adminBookings.toCsv(bookings));
+});
+
+function bookingPage(res, booking, { error = null, form = null, status = 200 } = {}) {
+  const car = adminBookings.carOf(booking);
+  const shop = adminBookings.shopOf(booking);
+  const cars = db.prepare('SELECT id, year, make, model, daily_price FROM cars WHERE shop_id = ? ORDER BY make, model').all(booking.shop_id);
+  res.status(status).render('admin/booking', {
+    booking, car, shop, cars, error, form: form || booking,
+    extras: bookingExtras(booking.id), documents: documents.bookingDocuments(booking.id), log: bookingLog(booking.id),
+  });
+}
+
+const notFound = (res) => res.status(404).render('error', { title: 'Booking not found', message: 'This booking does not exist.' });
+
+router.get('/bookings/:id', (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  bookingPage(res, booking);
+});
+
+router.post('/bookings/:id/cancel', async (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  try {
+    const updated = await adminBookings.cancel(booking, {
+      notifyCustomer: req.body.notify_customer === 'on', notifyShop: req.body.notify_shop === 'on',
+      reason: String(req.body.reason || '').trim().slice(0, 300),
+    });
+    res.flash('success', `Booking ${booking.reference} cancelled${updated.payment_status === 'refunded' ? ' and refunded in full' : ''}. The dates are free again.`);
+  } catch (err) {
+    res.flash('error', `Not cancelled: ${err.message}`);
+  }
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
+router.post('/bookings/:id/test', async (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  try {
+    if (req.body.undo === '1') {
+      const { note } = adminBookings.unmarkTest(booking);
+      res.flash('success', `${booking.reference} is no longer marked as test. ${note}`);
+    } else {
+      await adminBookings.markTest(booking);
+      res.flash('success', `${booking.reference} marked as test / fake. It no longer counts in commission or statistics, and its dates are free.`);
+    }
+  } catch (err) {
+    res.flash('error', `Not changed: ${err.message}`);
+  }
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
+router.post('/bookings/:id/status', (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  try {
+    adminBookings.setStatus(booking, String(req.body.status || ''));
+    res.flash('success', 'Booking status updated.');
+  } catch (err) {
+    res.flash('error', err.message);
+  }
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
+router.post('/bookings/:id/edit', async (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  const result = await adminBookings.edit(booking, req.body);
+  if (result.error) {
+    return bookingPage(res, booking, {
+      error: result.error, status: 400,
+      form: { ...booking, pickup_date: req.body.pickup_date, return_date: req.body.return_date, pickup_time: req.body.pickup_time, car_id: Number(req.body.car_id), total_price: req.body.total_price },
+    });
+  }
+  res.flash('success', `Booking ${booking.reference} updated${req.body.notify === 'on' ? ' and the customer and shop were emailed' : ''}.`);
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
+router.post('/bookings/:id/notes', (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  adminBookings.saveNotes(booking, req.body.admin_notes);
+  res.flash('success', 'Notes saved.');
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
+router.get('/activity', (req, res) => {
+  res.render('admin/activity', { log: recentLog(300) });
 });
 
 // ---------- Promo codes ----------
@@ -222,6 +336,7 @@ router.post('/settings/protection', (req, res) => {
   setSetting('verify_email', req.body.verify_email === 'on' ? '1' : '0');
   setSetting('verify_channel', req.body.verify_channel === 'email' ? 'email' : 'whatsapp');
   setSetting('max_open_bookings', String(max));
+  logAdmin('Changed booking protection', { details: `code ${req.body.verify_email === 'on' ? 'on' : 'off'} (${req.body.verify_channel === 'email' ? 'email' : 'WhatsApp'}), max ${max} open bookings` });
   res.flash('success', 'Booking protection saved.');
   res.redirect(303, '/admin/settings');
 });
@@ -246,6 +361,7 @@ router.post('/settings/commission', (req, res) => {
     });
   }
   commission.setDefaultPercent(percent);
+  logAdmin('Changed default commission', { details: `${percent}%` });
   res.flash('success', `Default commission saved: ${percent}%. It applies to new bookings from shops without their own rate.`);
   res.redirect(303, '/admin/settings');
 });

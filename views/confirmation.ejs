@@ -16,10 +16,14 @@
       <div class="confirm-icon cancelled">✕</div>
       <h1>Booking cancelled</h1>
       <p class="muted">
-        <%= booking.cancelled_by === 'customer' ? 'You cancelled this booking.' : booking.cancelled_by === 'shop' ? 'The rental shop cancelled this booking.' : 'This booking was cancelled.' %>
+        <%= booking.cancelled_by === 'customer' ? 'You cancelled this booking.' : booking.cancelled_by === 'shop' ? 'The rental shop cancelled this booking.' : booking.cancelled_by === 'admin' ? 'RentHub cancelled this booking.' : 'This booking was cancelled.' %>
         <% if (paid === 'refunded') { %>Your payment of <%= money(booking.total_price) %> has been refunded to your card. It usually appears within 5–10 business days.
         <% } else if (paid === 'paid') { %>The cancellation was made less than <%= FREE_CANCELLATION_HOURS %> hours before pick-up, so the payment is non-refundable.<% } %>
       </p>
+    <% } else if (s === 'no_show') { %>
+      <div class="confirm-icon cancelled">✕</div>
+      <h1>Car not picked up</h1>
+      <p class="muted">The rental shop marked this booking as not picked up. Contact the shop if this is a mistake.</p>
     <% } else { %>
       <div class="confirm-icon">✓</div>
       <h1>Booking <%= s === 'completed' ? 'completed' : 'confirmed' %>!</h1>

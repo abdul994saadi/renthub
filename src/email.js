@@ -326,4 +326,46 @@ async function sendConflictRefundEmail(booking, car, shop) {
   });
 }
 
-module.exports = { sendVerificationCode, sendPickupReminder, sendReturnReminder, sendReviewRequest, htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };
+// The owner cancelled a booking from the owner dashboard.
+async function sendAdminCancellationEmails(booking, car, shop, { customer = true, toShop = true, reason = '' } = {}) {
+  const why = reason ? `<p style="font-size:14px"><strong>Reason:</strong> ${esc(reason)}</p>` : '';
+  const refund = booking.payment_status === 'refunded'
+    ? `A full refund of <strong>${money(booking.total_price)}</strong> has been sent to the customer's card.` : '';
+  if (customer) {
+    await sendEmail({
+      to: booking.customer_email,
+      replyTo: shop.email,
+      subject: `Booking cancelled: ${booking.reference}`,
+      html: layout('Your booking has been cancelled', `<p style="font-size:14px">RentHub has cancelled the booking below.
+        ${refund.replace("the customer's card", 'your card')} If you have any questions, reply to this email to contact ${esc(shop.name)}.</p>
+        ${why}${bookingTable(booking, car, shop)}`),
+    });
+  }
+  if (toShop) {
+    await sendEmail({
+      to: shop.email,
+      subject: `Booking cancelled by RentHub: ${booking.reference}`,
+      html: layout('A booking was cancelled', `<p style="font-size:14px">RentHub cancelled this booking for ${esc(booking.customer_name)}. The dates are free again.
+        ${refund}</p>${why}${bookingTable(booking, car, shop)}`),
+    });
+  }
+}
+
+// The owner changed a booking's dates, car or price from the owner dashboard.
+async function sendBookingUpdatedEmails(booking, car, shop) {
+  await sendEmail({
+    to: booking.customer_email,
+    replyTo: shop.email,
+    subject: `Booking updated: ${booking.reference}`,
+    html: layout('Your booking has been updated', `<p style="font-size:14px">Your booking with ${esc(shop.name)} has been changed. These are the new details:</p>
+      ${bookingTable(booking, car, shop)}${manageSection(booking)}`),
+  });
+  await sendEmail({
+    to: shop.email,
+    subject: `Booking updated by RentHub: ${booking.reference}`,
+    html: layout('A booking was updated', `<p style="font-size:14px">RentHub changed the booking for ${esc(booking.customer_name)}. The new details:</p>
+      ${bookingTable(booking, car, shop)}`),
+  });
+}
+
+module.exports = { sendAdminCancellationEmails, sendBookingUpdatedEmails, sendVerificationCode, sendPickupReminder, sendReturnReminder, sendReviewRequest, htmlToText, smtpSummary, verifySmtp, sendTestEmail, sendBookingEmails, sendCancellationEmail, sendCustomerCancellationEmails, sendConflictRefundEmail, smtpConfigured };

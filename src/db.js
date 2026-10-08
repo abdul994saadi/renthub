@@ -91,7 +91,7 @@ addColumn('bookings', 'payment_ref', 'TEXT'); // the payment gateway's transacti
 addColumn('bookings', 'paid_at', 'TEXT');
 addColumn('bookings', 'pickup_time', "TEXT NOT NULL DEFAULT '10:00'"); // local time (TIMEZONE), HH:MM
 addColumn('bookings', 'manage_token', 'TEXT'); // secret in the customer's link to view/cancel the booking
-addColumn('bookings', 'cancelled_by', 'TEXT'); // 'shop' | 'customer'
+addColumn('bookings', 'cancelled_by', 'TEXT'); // 'shop' | 'customer' | 'admin'
 addColumn('bookings', 'cancelled_at', 'TEXT');
 
 // Shops: verification by the site owner, suspension, contact and pick-up options.
@@ -116,6 +116,9 @@ addColumn('bookings', 'return_reminder_sent_at', 'TEXT');
 addColumn('bookings', 'review_requested_at', 'TEXT');
 addColumn('bookings', 'commission_percent', 'REAL');
 addColumn('cars', 'min_days', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('bookings', 'is_test', 'INTEGER NOT NULL DEFAULT 0'); // marked as a test or fake booking by the owner
+addColumn('bookings', 'test_prev_status', 'TEXT'); // status before it was marked as test, to undo
+addColumn('bookings', 'admin_notes', "TEXT NOT NULL DEFAULT ''"); // private notes, owner only
 addColumn('shops', 'commission_percent', 'REAL');
 
 db.exec(`
@@ -178,6 +181,17 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_car ON reviews(car_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_shop ON reviews(shop_id);
+
+-- What the owner did in the owner dashboard, newest first.
+CREATE TABLE IF NOT EXISTS admin_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action TEXT NOT NULL,
+  booking_id INTEGER,
+  booking_ref TEXT,
+  details TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS admin_log_booking ON admin_log (booking_id);
 
 -- One-time codes that confirm a customer's email before a pay-at-pick-up booking.
 CREATE TABLE IF NOT EXISTS email_codes (
