@@ -142,6 +142,12 @@ a.list-item:hover { text-decoration: none; border-color: var(--primary); }
 .hero::after { width: 420px; height: 420px; background: var(--hero-blob-2); bottom: -260px; left: -140px; }
 .hero .wrap { position: relative; z-index: 1; }
 .hero h1 { font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 800; font-size: clamp(2.2rem, 5.4vw, 3.8rem); letter-spacing: -0.03em; line-height: 1.05; max-width: 14ch; margin-bottom: 28px; }
+.hero-title { display: grid; }
+/* All phrases share one cell, so the headline keeps the height of the longest one and nothing below jumps. */
+/* The old phrase fades out first, then the new one fades in, so they never overlap. */
+.hero-phrase { grid-area: 1 / 1; opacity: 0; transform: translateY(14px); transition: opacity 0.35s ease, transform 0.35s ease; }
+.hero-phrase.is-active { opacity: 1; transform: none; transition-delay: 0.35s; }
+@media (prefers-reduced-motion: reduce) { .hero-phrase { transition: none; } }
 .hero h1 .hl { color: var(--primary); background: linear-gradient(transparent 68%, var(--hero-highlight) 68%, var(--hero-highlight) 92%, transparent 92%); }
 .lead { font-size: 1.1rem; color: var(--muted); margin: 0 0 20px; }
 .search { display: grid; gap: 12px; padding: 16px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }

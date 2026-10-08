@@ -1,7 +1,26 @@
 <%- include('partials/head') %>
 <section class="hero">
   <div class="wrap">
-    <h1>Rent a car from trusted <span class="hl">local shops</span></h1>
+    <%
+      // Headline phrases shown one after another; [brackets] mark the highlighted words.
+      const phrases = [
+        'Rent a car from trusted [local shops]',
+        'Your next ride is [one tap away]',
+        'Compare local shops. [Book in minutes.]',
+        'Beirut to Byblos, [your way]',
+        'No calls. No haggling. [Just book.]',
+        'The right car at [the right price]',
+        'Land in Beirut, [your car is waiting]',
+        'Pick it up or [get it delivered]',
+        'Mountain weekend? [Grab the keys.]',
+        'Every road in Lebanon [starts here]',
+      ];
+      const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+      const phraseHtml = (p) => esc(p).replace(/\[(.+?)\]/, '<span class="hl">$1</span>');
+    %>
+    <h1 class="hero-title" data-rotate>
+      <% phrases.forEach((p, i) => { %><span class="hero-phrase<%= i ? '' : ' is-active' %>"<%- i ? ' aria-hidden="true"' : '' %>><%- phraseHtml(p) %></span><% }) %>
+    </h1>
     <form class="search card" action="/cars" method="get">
       <label>City
         <select name="city">
@@ -45,4 +64,19 @@
     <a class="btn" href="/shop/register">List your shop</a>
   </div>
 </section>
+<script>
+  // Rotate the headline every few seconds (not for people who prefer less motion).
+  (function () {
+    const root = document.querySelector('[data-rotate]');
+    const items = root ? [...root.querySelectorAll('.hero-phrase')] : [];
+    if (items.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let i = 0;
+    setInterval(() => {
+      if (document.hidden) return;
+      items[i].classList.remove('is-active');
+      i = (i + 1) % items.length;
+      items[i].classList.add('is-active');
+    }, 3500);
+  })();
+</script>
 <%- include('partials/foot') %>
