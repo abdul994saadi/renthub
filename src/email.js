@@ -293,8 +293,20 @@ async function sendReviewRequest(booking, car, shop) {
     subject: `How was your ${car.make} ${car.model} from ${shop.name}?`,
     html: layout(`Thank you for renting with ${shop.name}`, `<p style="font-size:14px">How was the car and the service? Tap a rating to leave a quick review:</p>
       <p style="margin:12px 0;line-height:1.4">${stars}</p>
-      <p style="margin:16px 0 0">${button(url, 'Write a review')}</p>`),
+      <p style="margin:16px 0 0">${button(url, 'Write a review')}</p>
+      ${bookAgainSection(car, shop)}`),
   });
+}
+
+// Invites the customer back after a rental, with the owner's returning-customer code if one is set.
+function bookAgainSection(car, shop) {
+  const offer = require('./customers').returningOffer(shop.id);
+  const carUrl = `${SITE_URL}/cars/${car.id}${offer ? `?promo=${encodeURIComponent(offer.code)}` : ''}`;
+  return `<hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0">
+    <p style="font-size:15px;font-weight:bold;margin:0 0 6px">Need a car again?</p>
+    ${offer ? `<p style="font-size:14px;margin:0 0 8px">As a returning customer, use code <strong style="font-size:16px;letter-spacing:1px">${esc(offer.code)}</strong> for <strong>${esc(offer.label)}</strong> your next rental${offer.minDays > 1 ? ` of ${offer.minDays}+ days` : ''}.</p>` : ''}
+    <p style="margin:12px 0 0">${button(carUrl, `Book the ${car.make} ${car.model} again`)}</p>
+    <p style="font-size:13px;margin:10px 0 0"><a href="${esc(`${SITE_URL}/cars`)}" style="color:#2563eb">Or browse all cars on RentHub</a></p>`;
 }
 
 async function sendCancellationEmail(booking, car, shop) {

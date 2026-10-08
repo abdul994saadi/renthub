@@ -1,6 +1,12 @@
 <%- include('../partials/head', { title: 'Settings' }) %>
 <div class="wrap section">
   <%- include('../partials/admin-nav') %>
+  <form class="card pad form narrow-form" method="post" action="/admin/settings/returning" style="margin-bottom:20px">
+    <h2>Returning customers</h2>
+    <p class="muted small">After each rental, customers get a thank-you email asking for a review, with a "Book again" button. Add a promo code (created on the Promo codes page) to offer them a discount on their next rental. Leave empty for no discount.</p>
+    <label>Promo code for returning customers (optional)<input name="returning_promo_code" maxlength="30" autocapitalize="characters" value="<%= returningCode %>" placeholder="e.g. WELCOMEBACK"></label>
+    <button class="btn" type="submit">Save code</button>
+  </form>
   <form class="card pad form narrow-form" method="post" action="/admin/settings/protection" style="margin-bottom:20px">
     <h2>Protection against fake bookings</h2>
     <p class="muted small">Applies while customers pay at pick-up. Online card payments do not need it.</p>

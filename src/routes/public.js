@@ -108,7 +108,7 @@ router.get('/cars', (req, res) => {
 router.get('/cars/:id', (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
-  renderCarPage(res, car, { form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '' } });
+  renderCarPage(res, car, { form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '', promoCode: String(req.query.promo || '').slice(0, 40) } });
 });
 
 function readBookingForm(body) {

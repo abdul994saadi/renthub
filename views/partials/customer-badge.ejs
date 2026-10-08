@@ -1,0 +1,6 @@
+<% const h = history; if (h) { %>
+  <span class="customer-badge">
+    <% if (h.rentals) { %><span class="chip chip-green" title="Rentals by the same email or phone on RentHub">Returning customer · <%= h.rentals %> rental<%= h.rentals === 1 ? '' : 's' %><%= typeof ownShop !== 'undefined' && ownShop ? (h.withShop ? ` (${h.withShop} with you)` : '') : '' %></span><% } else { %><span class="chip">New customer</span><% } %>
+    <% if (h.noShows) { %><span class="chip chip-red" title="Bookings where the customer did not come"><%= h.noShows %> no-show<%= h.noShows === 1 ? '' : 's' %></span><% } %>
+  </span>
+<% } %>

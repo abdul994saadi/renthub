@@ -29,6 +29,9 @@
       <h1>Booking <%= s === 'completed' ? 'completed' : 'confirmed' %>!</h1>
       <p class="muted"><%= paid === 'paid' ? 'Payment received. ' : '' %>We sent the details to <strong><%= booking.customer_email %></strong>.</p>
     <% } %>
+    <% if (s === 'completed' || (s === 'confirmed' && booking.return_date < todayISO())) { %>
+      <p><a class="btn" href="/cars/<%= car.id %>">Book this car again</a> <a class="btn btn-ghost" href="/cars">Browse all cars</a></p>
+    <% } %>
     <div class="ref">Reference <strong><%= booking.reference %></strong></div>
     <table class="summary">
       <tr><td>Car</td><td><%= car.year %> <%= car.make %> <%= car.model %></td></tr>

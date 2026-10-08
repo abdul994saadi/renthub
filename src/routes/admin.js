@@ -12,6 +12,7 @@ const verify = require('../verify');
 const adminBookings = require('../admin-bookings');
 const { logAdmin, recentLog, bookingLog } = require('../adminlog');
 const { bookingExtras } = require('../pricing');
+const { customerHistory } = require('../customers');
 
 const router = express.Router();
 
@@ -170,7 +171,7 @@ function findBookings(req, limit) {
 
 router.get('/bookings', (req, res) => {
   const { bookings, status, q } = findBookings(req, 200);
-  res.render('admin/bookings', { bookings: bookings.map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) })), status, q });
+  res.render('admin/bookings', { bookings: bookings.map((b) => ({ ...b, documents: documents.bookingDocuments(b.id), history: customerHistory(b) })), status, q });
 });
 
 router.get('/bookings.csv', (req, res) => {
@@ -187,7 +188,7 @@ function bookingPage(res, booking, { error = null, form = null, status = 200 } =
   const cars = db.prepare('SELECT id, year, make, model, daily_price FROM cars WHERE shop_id = ? ORDER BY make, model').all(booking.shop_id);
   res.status(status).render('admin/booking', {
     booking, car, shop, cars, error, form: form || booking,
-    extras: bookingExtras(booking.id), documents: documents.bookingDocuments(booking.id), log: bookingLog(booking.id),
+    extras: bookingExtras(booking.id), documents: documents.bookingDocuments(booking.id), log: bookingLog(booking.id), history: customerHistory(booking),
   });
 }
 
@@ -324,7 +325,7 @@ router.post('/promos/:id/:action', (req, res) => {
 // ---------- Settings ----------
 
 router.get('/settings', (req, res) => {
-  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null, verify });
+  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null, verify, returningCode: getSetting('returning_promo_code', '') });
 });
 
 router.post('/settings/protection', (req, res) => {
@@ -338,6 +339,18 @@ router.post('/settings/protection', (req, res) => {
   setSetting('max_open_bookings', String(max));
   logAdmin('Changed booking protection', { details: `code ${req.body.verify_email === 'on' ? 'on' : 'off'} (${req.body.verify_channel === 'email' ? 'email' : 'WhatsApp'}), max ${max} open bookings` });
   res.flash('success', 'Booking protection saved.');
+  res.redirect(303, '/admin/settings');
+});
+
+router.post('/settings/returning', (req, res) => {
+  const code = String(req.body.returning_promo_code || '').trim().toUpperCase();
+  if (code && !db.prepare('SELECT 1 FROM promo_codes WHERE code = ? COLLATE NOCASE').get(code)) {
+    res.flash('error', `There is no promo code ${code}. Create it on the Promo codes page first.`);
+    return res.redirect(303, '/admin/settings');
+  }
+  setSetting('returning_promo_code', code);
+  logAdmin('Changed returning-customer code', { details: code || '(none)' });
+  res.flash('success', code ? `Customers will be offered ${code} after each rental.` : 'No code is offered after rentals now.');
   res.redirect(303, '/admin/settings');
 });
 
@@ -356,7 +369,7 @@ router.post('/settings/commission', (req, res) => {
   const percent = commission.parsePercent(req.body.commission_percent);
   if (percent === null || Number.isNaN(percent)) {
     return res.status(400).render('admin/settings', {
-      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null, verify,
+      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null, verify, returningCode: getSetting('returning_promo_code', ''),
       commissionError: 'Please enter a commission between 0 and 100.',
     });
   }
@@ -369,7 +382,7 @@ router.post('/settings/commission', (req, res) => {
 router.post('/settings', (req, res) => {
   const rate = Number(String(req.body.lbp_rate || '').replace(/[,\s]/g, ''));
   if (!(rate >= 0 && rate < 10_000_000)) {
-    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, verify, error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
+    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, verify, returningCode: getSetting('returning_promo_code', ''), error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
   }
   setSetting('lbp_rate', rate);
   res.flash('success', rate ? `Exchange rate saved: 1 USD = ${new Intl.NumberFormat('en-US').format(rate)} LBP.` : 'LBP prices are now hidden.');

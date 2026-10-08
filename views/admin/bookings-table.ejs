@@ -9,6 +9,7 @@
         <div class="small"><%= formatDate(b.pickup_date) %>, <%= formatTime(b.pickup_time) %> → <%= formatDate(b.return_date) %> · <strong><%= money(b.total_price) %></strong><%= b.promo_code ? ` · code ${b.promo_code}` : '' %></div>
         <% if (b.documents && b.documents.length) { %><div class="small">Documents uploaded: <%= b.documents.length %></div><% } %>
         <% if (b.admin_notes) { %><div class="small">📝 <%= b.admin_notes.slice(0, 80) %><%= b.admin_notes.length > 80 ? '…' : '' %></div><% } %>
+        <% if (b.history) { %><div class="small"><%- include('../partials/customer-badge', { history: b.history }) %></div><% } %>
         <div class="small muted"><%= b.customer_name %> · <%= b.customer_email %> · <%= b.customer_phone %> · Ref <%= b.reference %> · booked <%= b.created_at.slice(0, 16) %> UTC</div>
       </div>
     </a>

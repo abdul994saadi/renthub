@@ -6,6 +6,7 @@
           <span class="chip <%= b.payment_status === 'paid' ? 'chip-green' : '' %>"><%= b.payment_status === 'unpaid' ? 'pay at pick-up' : b.payment_status %></span></div>
         <div class="small"><%= formatDate(b.pickup_date) %>, <%= formatTime(b.pickup_time) %> → <%= formatDate(b.return_date) %> · <%= b.days %> day<%= b.days === 1 ? '' : 's' %> · <strong><%= money(b.total_price) %></strong></div>
         <div class="small muted"><%= b.customer_name %> · <a href="mailto:<%= b.customer_email %>"><%= b.customer_email %></a> · <a href="tel:<%= b.customer_phone.replace(/[^\d+]/g, '') %>"><%= b.customer_phone %></a></div>
+        <div class="small"><%- include('../partials/customer-badge', { history: b.history, ownShop: true }) %></div>
         <% if (b.pickup_method === 'delivery') { %><div class="small"><strong>Deliver to:</strong> <%= b.delivery_address %></div><% } %>
         <% if (b.pickup_method === 'airport') { %><div class="small"><strong>Airport pick-up</strong><%= b.flight_number ? ` · flight ${b.flight_number}` : '' %></div><% } %>
         <% if (b.extras && b.extras.length) { %><div class="small"><strong>Extras:</strong> <%= b.extras.map(e => e.name).join(', ') %></div><% } %>

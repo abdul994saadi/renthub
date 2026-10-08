@@ -15,7 +15,8 @@ const { optimizeUploads } = require('../images');
 const commission = require('../commission');
 
 // Booking rows for lists: chosen extras and uploaded driver documents.
-const withDetails = (bookings) => withExtras(bookings).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id) }));
+const { customerHistory } = require('../customers');
+const withDetails = (bookings) => withExtras(bookings).map((b) => ({ ...b, documents: documents.bookingDocuments(b.id), history: customerHistory(b) }));
 
 const router = express.Router();
 
