@@ -3,6 +3,10 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const sharp = require('sharp');
+
+// Keep memory low on small servers: no image cache, one thread.
+sharp.cache(false);
+sharp.concurrency(1);
 const { db, getSetting, setSetting } = require('./db');
 const { UPLOAD_DIR } = require('./helpers');
 
