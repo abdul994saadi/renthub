@@ -52,6 +52,10 @@
         <% } %>
       </div>
       <p class="muted small">No-shows and test bookings carry no commission.</p>
+      <% if (['confirmed', 'completed'].includes(b.status) && !b.is_test) { %>
+        <form method="post" action="/admin/bookings/<%= b.id %>/thank-you" style="margin-top:10px"><button class="btn btn-small btn-ghost">Send thank-you email now</button></form>
+        <p class="muted small"><%= b.review_requested_at ? `Thank-you email already sent on ${b.review_requested_at.slice(0, 16)} UTC.` : 'Sent automatically 2 hours after the return time.' %> It includes "Book again" and the returning-customer code, if one is set in Settings.</p>
+      <% } %>
     </div>
 
     <% if (active) { %>

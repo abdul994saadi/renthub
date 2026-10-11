@@ -258,6 +258,23 @@ router.post('/bookings/:id/edit', async (req, res) => {
   res.redirect(303, `/admin/bookings/${booking.id}`);
 });
 
+// Sends the after-rental thank-you email (review request + "Book again" + returning code) right away.
+router.post('/bookings/:id/thank-you', async (req, res) => {
+  const booking = adminBookings.load(req.params.id);
+  if (!booking) return notFound(res);
+  if (!['confirmed', 'completed'].includes(booking.status) || booking.is_test) {
+    res.flash('error', 'The thank-you email is only for confirmed or completed bookings.');
+    return res.redirect(303, `/admin/bookings/${booking.id}`);
+  }
+  await email.sendReviewRequest(booking, adminBookings.carOf(booking), adminBookings.shopOf(booking));
+  db.prepare("UPDATE bookings SET review_requested_at = COALESCE(review_requested_at, datetime('now')) WHERE id = ?").run(booking.id);
+  const sent = db.prepare('SELECT delivered, error FROM emails WHERE to_address = ? ORDER BY id DESC LIMIT 1').get(booking.customer_email);
+  logAdmin('Sent thank-you email', { booking, details: `To ${booking.customer_email}${getSetting('returning_promo_code', '') ? ` with code ${getSetting('returning_promo_code', '')}` : ''}${sent?.error ? `. Failed: ${sent.error}` : ''}` });
+  if (sent?.error) res.flash('error', `The email could not be sent: ${sent.error}. Check Admin → Email.`);
+  else res.flash('success', `Thank-you email sent to ${booking.customer_email}. Ask them to check the junk folder too.`);
+  res.redirect(303, `/admin/bookings/${booking.id}`);
+});
+
 router.post('/bookings/:id/notes', (req, res) => {
   const booking = adminBookings.load(req.params.id);
   if (!booking) return notFound(res);
