@@ -20,8 +20,8 @@
       </select>
     </label>
     <label>Max price/day<input type="number" name="maxPrice" min="0" step="1" value="<%= f.maxPrice %>" inputmode="numeric"></label>
-    <label>Pick-up<input type="date" name="pickup" value="<%= f.pickup %>" min="<%= todayISO() %>"></label>
-    <label>Return<input type="date" name="return" value="<%= f.ret %>" min="<%= todayISO() %>"></label>
+    <% const ep = earliestPickup(); %><label>Pick-up<input type="date" name="pickup" value="<%= f.pickup || ep.date %>" min="<%= todayISO() %>"></label>
+    <label>Return<input type="date" name="return" value="<%= f.ret || addDaysISO(f.pickup || ep.date, 1) %>" min="<%= todayISO() %>"></label>
     <label>Sort
       <select name="sort">
         <option value="price" <%= f.sort === 'price' ? 'selected' : '' %>>Price: low to high</option>

@@ -86,6 +86,11 @@ img, svg { max-width: 100%; display: block; }
 .log-list li:last-child { border-bottom: 0; }
 .customer-badge { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .customer-badge .chip { text-transform: none; }
+.pw-rules { list-style: none; margin: -4px 0 4px; padding: 0; display: grid; gap: 4px; color: var(--muted); }
+.pw-rules li::before { content: "○"; display: inline-block; width: 1.3em; }
+.pw-rules li.ok { color: var(--green); }
+.pw-rules li.ok::before { content: "✓"; }
+.pw-rules code { font-size: 0.85em; letter-spacing: 1px; }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; }
 .muted { color: var(--muted); }
 .small { font-size: 0.875rem; }

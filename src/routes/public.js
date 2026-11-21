@@ -1,6 +1,6 @@
 const express = require('express');
 const { db } = require('../db');
-const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, MIN_NOTICE_HOURS, validateDates, todayISO, localToDate, isISODate, daysBetween } = require('../helpers');
+const { CITIES, CATEGORIES, TRANSMISSIONS, PICKUP_TIMES, MIN_NOTICE_HOURS, validateDates, todayISO, localToDate, isISODate, daysBetween, earliestPickup, addDaysISO } = require('../helpers');
 const { isCarAvailable, upcomingBookedRanges, createBooking, cancellationPolicy, hasManageAccess } = require('../bookings');
 const { shopExtras, pickupOptions, quoteBooking, bookingExtras } = require('../pricing');
 const { sendBookingEmails, sendCustomerCancellationEmails } = require('../email');
@@ -108,7 +108,14 @@ router.get('/cars', (req, res) => {
 router.get('/cars/:id', (req, res) => {
   const car = activeCar(req.params.id);
   if (!car) return res.status(404).render('error', { title: 'Car not found', message: 'This car is no longer available.' });
-  renderCarPage(res, car, { form: { pickup: req.query.pickup || '', pickupTime: '10:00', return: req.query.return || '', promoCode: String(req.query.promo || '').slice(0, 40) } });
+  // Dates start filled in: the earliest bookable pick-up (or the searched dates) and the shortest allowed rental.
+  const earliest = earliestPickup();
+  const pickup = isISODate(req.query.pickup) && req.query.pickup >= earliest.date ? req.query.pickup : earliest.date;
+  const ret = isISODate(req.query.return) && req.query.return > pickup ? req.query.return : addDaysISO(pickup, car.min_days || 1);
+  renderCarPage(res, car, { form: {
+    pickup, pickupTime: pickup === earliest.date && earliest.time > '10:00' ? earliest.time : '10:00', return: ret,
+    promoCode: String(req.query.promo || '').slice(0, 40),
+  } });
 });
 
 function readBookingForm(body) {

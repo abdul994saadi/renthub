@@ -6,16 +6,39 @@
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
     <label>Shop name<input name="name" required value="<%= form.name || '' %>" autocomplete="organization"></label>
     <div class="row-2">
-      <label>Email<input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email"></label>
-      <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel"></label>
+      <label>Email<input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email" placeholder="e.g. citydrive@gmail.com"></label>
+      <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel" placeholder="e.g. 03 123 456"></label>
     </div>
     <div class="row-2">
       <label>City<input name="city" list="city-list" required value="<%= form.city || '' %>" autocomplete="address-level2"></label><datalist id="city-list"><% CITIES.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
       <label>Street address<input name="address" value="<%= form.address || '' %>" autocomplete="street-address"></label>
     </div>
-    <label>Password (at least 8 characters)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <label>Password<input type="password" name="password" required minlength="8" maxlength="64" autocomplete="new-password" placeholder="e.g. Cars2026!" data-password></label>
+    <ul class="pw-rules small" data-pw-rules>
+      <li data-rule="length">At least 8 characters</li>
+      <li data-rule="letter">At least one letter (A–Z or a–z)</li>
+      <li data-rule="number">At least one number (0–9)</li>
+      <li data-rule="chars">Only English letters, numbers and these symbols: <code><%= PASSWORD_SYMBOLS.split('').join(' ') %></code></li>
+    </ul>
     <button class="btn btn-big btn-block" type="submit">Create shop account</button>
     <p class="center small">Already registered? <a href="/shop/login">Log in</a></p>
   </form>
 </div>
+<script>
+  // Ticks each password rule as it is met.
+  (function () {
+    const input = document.querySelector('[data-password]');
+    const rules = document.querySelector('[data-pw-rules]');
+    if (!input || !rules) return;
+    const symbols = <%- JSON.stringify(PASSWORD_SYMBOLS) %>;
+    const check = {
+      length: (v) => v.length >= 8,
+      letter: (v) => /[A-Za-z]/.test(v),
+      number: (v) => /[0-9]/.test(v),
+      chars: (v) => v.length > 0 && [...v].every((c) => /[A-Za-z0-9]/.test(c) || symbols.includes(c)),
+    };
+    const update = () => rules.querySelectorAll('[data-rule]').forEach((li) => li.classList.toggle('ok', check[li.dataset.rule](input.value)));
+    input.addEventListener('input', update); update();
+  })();
+</script>
 <%- include('../partials/foot') %>

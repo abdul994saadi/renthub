@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const multer = require('multer');
 const { db } = require('../db');
 const { hashPassword, verifyPassword, logIn, logOut, requireShop } = require('../auth');
-const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO, isISODate } = require('../helpers');
+const { CATEGORIES, TRANSMISSIONS, FUELS, todayISO, isISODate, passwordProblem } = require('../helpers');
 const { sendCancellationEmail } = require('../email');
 const payments = require('../payments');
 const { MAX_PHOTOS, carPhotos, updateCarPhotos, deleteCarPhotos } = require('../photos');
@@ -57,7 +57,7 @@ router.post('/register', (req, res) => {
     (!form.name && 'Please enter your shop name.')
     || (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 'Please enter a valid email address.')
     || (!form.city && 'Please enter the city your shop is in.')
-    || (password.length < 8 && 'The password must be at least 8 characters.')
+    || passwordProblem(password)
     || (db.prepare('SELECT 1 FROM shops WHERE email = ?').get(form.email) && 'A shop with this email already exists. Try logging in.')
     || null;
   if (error) return res.status(400).render('shop/register', { form, error });

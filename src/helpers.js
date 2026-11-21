@@ -50,6 +50,32 @@ function formatTime(hhmm) {
 }
 
 // Today's date (YYYY-MM-DD) in the shops' time zone.
+// Shop account passwords: 8–64 characters, at least one letter and one number,
+// using only English letters, numbers and these symbols.
+const PASSWORD_SYMBOLS = '!@#$%^&*()-_+=.,?/~';
+function passwordProblem(pw) {
+  const allowed = new RegExp(`^[A-Za-z0-9${PASSWORD_SYMBOLS.replace(/[-\\^\]]/g, '\\$&')}]+$`);
+  if (pw.length < 8) return 'The password must be at least 8 characters.';
+  if (pw.length > 64) return 'The password can be at most 64 characters.';
+  if (!allowed.test(pw)) return `The password can only use English letters (A–Z, a–z), numbers (0–9) and these symbols: ${PASSWORD_SYMBOLS.split('').join(' ')}`;
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) return 'The password must include at least one letter and one number.';
+  return null;
+}
+
+// The first pick-up date and time a customer can book (at least MIN_NOTICE_HOURS ahead), in TIMEZONE.
+function earliestPickup(now = new Date()) {
+  const from = new Date(now.getTime() + MIN_NOTICE_HOURS * 3600 * 1000);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(from).map((p) => [p.type, p.value]));
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  const time = PICKUP_TIMES.find((t) => t >= `${parts.hour}:${parts.minute}`);
+  if (time) return { date, time };
+  const next = new Date(Date.parse(date) + 86400000).toISOString().slice(0, 10);
+  return { date: next, time: PICKUP_TIMES[0] };
+}
+const addDaysISO = (iso, n) => new Date(Date.parse(iso) + n * 86400000).toISOString().slice(0, 10);
+
 function todayISO() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE }).format(new Date());
 }
@@ -100,6 +126,6 @@ function carFeatures(car) {
 const CITIES = ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Byblos', 'Zahle', 'Baalbek', 'Jounieh', 'Batrun', 'Aley', 'Bhamdoun'];
 
 module.exports = {
-  CITIES, MIN_NOTICE_HOURS, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
+  CITIES, MIN_NOTICE_HOURS, PASSWORD_SYMBOLS, passwordProblem, earliestPickup, addDaysISO, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
   money, supportWhatsapp, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };

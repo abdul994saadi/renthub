@@ -28,8 +28,8 @@
           <% cities.forEach(c => { %><option><%= c %></option><% }) %>
         </select>
       </label>
-      <label>Pick-up<input type="date" name="pickup" min="<%= todayISO() %>"></label>
-      <label>Return<input type="date" name="return" min="<%= todayISO() %>"></label>
+      <% const ep = earliestPickup(); %><label>Pick-up<input type="date" name="pickup" min="<%= todayISO() %>" value="<%= ep.date %>"></label>
+      <label>Return<input type="date" name="return" min="<%= todayISO() %>" value="<%= addDaysISO(ep.date, 1) %>"></label>
       <label>Car type
         <select name="category">
           <option value="">Any type</option>
