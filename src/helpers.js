@@ -24,19 +24,9 @@ function money(amount) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: CURRENCY, maximumFractionDigits: 2 }).format(amount);
 }
 
-// Lebanese pound equivalent of a USD amount, using the rate set on the owner dashboard
-// (falls back to LBP_RATE). Rounded to the nearest 1,000 LBP. Empty when no rate is set.
-function lbpRate() {
-  return Number(getSetting('lbp_rate', process.env.LBP_RATE || 89500)) || 0;
-}
 // RentHub's own WhatsApp number for customer questions (owner dashboard → Settings).
 function supportWhatsapp() {
   return getSetting('support_whatsapp', process.env.SUPPORT_WHATSAPP || '');
-}
-function lbp(usd) {
-  const rate = lbpRate();
-  if (!rate || CURRENCY !== 'USD') return '';
-  return `LBP ${new Intl.NumberFormat('en-US').format(Math.round((usd * rate) / 1000) * 1000)}`;
 }
 
 // wa.me link for a phone number. Local Lebanese numbers (03 123 456, 71 123 456) get the +961 prefix.
@@ -111,5 +101,5 @@ const CITIES = ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Byblos', 'Zahle', 'Baalbe
 
 module.exports = {
   CITIES, MIN_NOTICE_HOURS, CURRENCY, UPLOAD_DIR, TIMEZONE, FREE_CANCELLATION_HOURS, PICKUP_TIMES, CATEGORIES, TRANSMISSIONS, FUELS,
-  money, lbp, lbpRate, supportWhatsapp, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
+  money, supportWhatsapp, whatsappLink, formatDate, formatTime, formatDateTime, todayISO, localToDate, isISODate, daysBetween, validateDates, carFeatures,
 };

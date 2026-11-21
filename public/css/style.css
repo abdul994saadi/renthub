@@ -245,7 +245,6 @@ legend { font-weight: 600; padding: 0 6px; }
 .estimate { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; display: grid; gap: 4px; }
 .est-row { display: flex; justify-content: space-between; gap: 12px; }
 .est-total { font-weight: 700; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px; }
-.est-lbp { text-align: right; font-size: 0.8rem; color: var(--muted); }
 .choice-group { grid-template-columns: 1fr; gap: 8px; }
 .choice-group label.check { align-items: flex-start; }
 .choice-group label.check input { margin-top: 2px; }
@@ -304,8 +303,6 @@ legend { font-weight: 600; padding: 0 6px; }
 .gallery-thumbs img { width: 100%; height: 100%; object-fit: cover; }
 .verified { vertical-align: middle; text-transform: none; }
 .verified-tick { color: var(--green); font-weight: 700; }
-.lbp-line { display: block; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
-.lbp { margin-top: -8px; }
 .cancel-box { text-align: left; border-top: 1px solid var(--border); margin: 20px 0; padding-top: 16px; }
 .cancel-box p { margin: 0 0 12px; }
 .docs-box { display: grid; gap: 12px; }

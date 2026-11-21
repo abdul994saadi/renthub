@@ -2,7 +2,7 @@
 const express = require('express');
 const crypto = require('node:crypto');
 const { db, getSetting, setSetting } = require('../db');
-const { todayISO, lbpRate, supportWhatsapp, whatsappLink } = require('../helpers');
+const { todayISO, supportWhatsapp, whatsappLink } = require('../helpers');
 const email = require('../email');
 const { promoUses } = require('../pricing');
 const scheduler = require('../scheduler');
@@ -342,7 +342,7 @@ router.post('/promos/:id/:action', (req, res) => {
 // ---------- Settings ----------
 
 router.get('/settings', (req, res) => {
-  res.render('admin/settings', { rate: lbpRate(), commissionRate: commission.defaultPercent(), error: null, commissionError: null, verify, returningCode: getSetting('returning_promo_code', '') });
+  res.render('admin/settings', { commissionRate: commission.defaultPercent(), error: null, commissionError: null, verify, returningCode: getSetting('returning_promo_code', '') });
 });
 
 router.post('/settings/protection', (req, res) => {
@@ -386,23 +386,13 @@ router.post('/settings/commission', (req, res) => {
   const percent = commission.parsePercent(req.body.commission_percent);
   if (percent === null || Number.isNaN(percent)) {
     return res.status(400).render('admin/settings', {
-      rate: lbpRate(), commissionRate: req.body.commission_percent, error: null, verify, returningCode: getSetting('returning_promo_code', ''),
+      commissionRate: req.body.commission_percent, error: null, verify, returningCode: getSetting('returning_promo_code', ''),
       commissionError: 'Please enter a commission between 0 and 100.',
     });
   }
   commission.setDefaultPercent(percent);
   logAdmin('Changed default commission', { details: `${percent}%` });
   res.flash('success', `Default commission saved: ${percent}%. It applies to new bookings from shops without their own rate.`);
-  res.redirect(303, '/admin/settings');
-});
-
-router.post('/settings', (req, res) => {
-  const rate = Number(String(req.body.lbp_rate || '').replace(/[,\s]/g, ''));
-  if (!(rate >= 0 && rate < 10_000_000)) {
-    return res.status(400).render('admin/settings', { rate: req.body.lbp_rate, commissionRate: commission.defaultPercent(), commissionError: null, verify, returningCode: getSetting('returning_promo_code', ''), error: 'Please enter a valid exchange rate (LBP for 1 USD), or 0 to hide LBP prices.' });
-  }
-  setSetting('lbp_rate', rate);
-  res.flash('success', rate ? `Exchange rate saved: 1 USD = ${new Intl.NumberFormat('en-US').format(rate)} LBP.` : 'LBP prices are now hidden.');
   res.redirect(303, '/admin/settings');
 });
 

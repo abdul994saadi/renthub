@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS car_photos (
 );
 CREATE INDEX IF NOT EXISTS idx_car_photos_car ON car_photos(car_id, position);
 
--- Site-wide settings changed from the owner dashboard (e.g. the LBP exchange rate).
+-- Site-wide settings changed from the owner dashboard (e.g. the commission rate).
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 -- Optional extras a shop offers (child seat, GPS...), priced per day or per booking.

@@ -17,7 +17,6 @@ A car rental marketplace. Rental shops sign up and list their cars; customers br
 - Confirmation page and confirmation email (sent only once payment succeeds) with reference, dates, amount paid and shop address
 
 - Photo gallery per car, ratings and reviews, availability calendar, optional extras, delivery / airport pick-up, promo codes
-- Approximate LBP prices next to USD
 - Private upload of driving licence and ID before pick-up
 - WhatsApp buttons to contact the shop; optional automatic WhatsApp messages
 - Reminder emails before pick-up and return, and a review request after the rental
@@ -75,7 +74,7 @@ To send real emails, set the SMTP variables from `.env.example`. Any SMTP provid
 ## Owner dashboard
 
 Set `ADMIN_PASSWORD` and open `/admin` (username `admin`): overview with commission, shops (verify / suspend),
-all bookings (with driver documents), promo codes, reviews (hide / show), settings (LBP exchange rate) and the email check.
+all bookings (with driver documents), promo codes, reviews (hide / show), settings (commission, booking protection, WhatsApp, returning-customer code) and the email check.
 
 ## Reminders
 

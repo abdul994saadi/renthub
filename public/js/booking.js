@@ -9,8 +9,6 @@
 
   const rate = Number(out.dataset.rate);
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: out.dataset.currency });
-  const lbpRate = Number(out.dataset.lbpRate) || 0;
-  const lbp = (usd) => (lbpRate ? `≈ LBP ${new Intl.NumberFormat('en-US').format(Math.round((usd * lbpRate) / 1000) * 1000)}` : '');
   const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
   function row(label, amount) {
@@ -45,7 +43,6 @@
       html += row(method.value === 'airport' ? 'Airport pick-up' : 'Delivery', Number(method.dataset.fee));
     }
     html += `<div class="est-row est-total"><span>Total</span><span>${fmt.format(total)}</span></div>`;
-    if (lbp(total)) html += `<div class="est-lbp">${lbp(total)}</div>`;
     out.innerHTML = html;
     out.hidden = false;
   }

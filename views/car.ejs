@@ -68,7 +68,6 @@
     <aside class="detail-side">
       <form class="card pad booking" method="post" action="/cars/<%= car.id %>/book" id="book">
         <div class="price big"><%= money(car.daily_price) %><small>/day</small></div>
-        <% if (lbp(car.daily_price)) { %><div class="muted small lbp">≈ <%= lbp(car.daily_price) %>/day</div><% } %>
         <h2 class="h3">Book this car</h2>
         <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
         <p class="muted small booking-rules"><% if (car.min_days > 1) { %>Minimum rental: <strong><%= car.min_days %> days</strong>. <% } %>Book at least <%= MIN_NOTICE_HOURS %> hours before pick-up.</p>
@@ -105,7 +104,7 @@
           </fieldset>
         <% } %>
 
-        <div class="estimate" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" data-lbp-rate="<%= CURRENCY === 'USD' ? lbpRate() : 0 %>" hidden></div>
+        <div class="estimate" data-estimate data-rate="<%= car.daily_price %>" data-currency="<%= CURRENCY %>" hidden></div>
 
         <p class="muted small" data-remembered hidden>Your details from last time are filled in. <a href="#" data-forget>Not you? Clear them</a></p>
         <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
