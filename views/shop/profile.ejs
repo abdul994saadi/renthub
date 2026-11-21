@@ -6,8 +6,8 @@
     <p class="muted small">Customers see these details on your cars, your shop page and in their confirmation emails. Booking emails go to <strong><%= currentShop.email %></strong>.</p>
     <label>Shop name<input name="name" required value="<%= form.name %>"></label>
     <div class="row-2">
-      <label>Phone<input type="tel" name="phone" value="<%= form.phone %>"></label>
-      <label>WhatsApp number<input type="tel" name="whatsapp" value="<%= form.whatsapp %>" placeholder="e.g. 03 123 456"></label>
+      <label>Phone<input type="tel" name="phone" value="<%= form.phone %>" placeholder="e.g. +961 3 123 456"></label>
+      <label>WhatsApp number<input type="tel" name="whatsapp" value="<%= form.whatsapp %>" placeholder="e.g. +961 3 123 456"></label>
     </div>
     <label>City<input name="city" list="city-list" required value="<%= form.city %>"></label><datalist id="city-list"><% CITIES.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
     <label>Street address<input name="address" value="<%= form.address %>"></label>

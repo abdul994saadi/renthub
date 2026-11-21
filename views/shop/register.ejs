@@ -7,7 +7,7 @@
     <label>Shop name<input name="name" required value="<%= form.name || '' %>" autocomplete="organization"></label>
     <div class="row-2">
       <label>Email<input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email" placeholder="e.g. citydrive@gmail.com"></label>
-      <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel" placeholder="e.g. 03 123 456"></label>
+      <label>Phone<input type="tel" name="phone" value="<%= form.phone || '' %>" autocomplete="tel" placeholder="e.g. +961 3 123 456"></label>
     </div>
     <div class="row-2">
       <label>City<input name="city" list="city-list" required value="<%= form.city || '' %>" autocomplete="address-level2"></label><datalist id="city-list"><% CITIES.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>

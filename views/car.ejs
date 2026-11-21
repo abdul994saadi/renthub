@@ -109,7 +109,7 @@
         <p class="muted small" data-remembered hidden>Your details from last time are filled in. <a href="#" data-forget>Not you? Clear them</a></p>
         <label>Full name<input name="name" required autocomplete="name" value="<%= form.name || '' %>"></label>
         <label>Email<input type="email" name="email" required autocomplete="email" value="<%= form.email || '' %>"></label>
-        <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>"></label>
+        <label>Phone<input type="tel" name="phone" required autocomplete="tel" value="<%= form.phone || '' %>" placeholder="e.g. +961 3 123 456"></label>
         <label>Promo code (optional)<input name="promo_code" maxlength="40" autocapitalize="characters" value="<%= form.promoCode || '' %>"></label>
         <label>Notes for the shop (optional)<textarea name="notes" rows="2" maxlength="500" placeholder="e.g. arrival time, special requests"><%= form.notes || '' %></textarea></label>
         <label class="check"><input type="checkbox" name="licence" required <%= form.licence ? 'checked' : '' %>> I hold a valid driving licence</label>
